@@ -10,7 +10,36 @@
 </head>
 <body>
 <script type="text/javascript">
+    function getVulnerableConfigurations(cve) {
+        var parts = new Array();
+        for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
+            var tmp = cve.vulnerable_configuration[i].split(":");
+            var tmp2 = {};
+            tmp.forEach(function (x, i) {
+                if (i == 1) {
+                    return tmp2.part = x.replace("/", "");
+                }
+                if (i == 2) {
+                    return tmp2.vendor = x;
+                }
+                if (i == 3) {
+                    return tmp2.product = x;
+                }
+                if (i == 4) {
+                    return tmp2.version = x;
+                }
+            });
+            parts.push(tmp2);
 
+        }
+        ;
+        return parts;
+    }
+    ;
+    d3.json("db_dump_4202.json", function (data) {
+
+        console.log(data[0].references);
+    });
 
 </script>
 </body>
