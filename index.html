@@ -10,6 +10,11 @@
 </head>
 <body>
 <script type="text/javascript">
+
+    /*
+     *   Takes in a one CVE data object
+     *   Returns All Configurations that are vulnerable with each part, vendor, product and version
+     */
     function getVulnerableConfigurations(cve) {
         var parts = new Array();
         for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
@@ -36,9 +41,134 @@
         return parts;
     }
     ;
-    d3.json("db_dump_4202.json", function (data) {
 
-        console.log(data[0].references);
+    /*
+     *   Takes in a one CVE data object
+     *   Returns an Array of String with all vulnerable Vendors for that CVE
+     */
+    function getVulnerableVendors(cve) {
+        var vendors = new Array();
+        var uniqueVendors = new Array();
+        var configs = getVulnerableConfigurations(cve);
+        for (var n = 0; n < configs.length; n++) {
+            vendors.push(configs[n].vendor);
+        }
+        $.each(vendors, function (i, el) {
+            if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
+        });
+        return uniqueVendors;
+    }
+
+
+    /*
+     *   Takes in a one CVE data object and optionally one String with Vendor name
+     *   Returns an Array of String with all vulnerable Products for that CVE and Vendor if vendor was provided, if not returns all vulnerable products
+     */
+    function getVulnerableProducts(cve, vendor) {
+        var products = new Array();
+        var uniqueProducts = new Array();
+        var configs = getVulnerableConfigurations(cve);
+        for (var n = 0; n < configs.length; n++) {
+            if (vendor != null && configs[n].vendor == vendor) {
+                products.push(configs[n].product);
+            } else if (vendor == null) {
+                products.push(configs[n].product);
+            }
+        }
+        $.each(products, function (i, el) {
+            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+        });
+        return uniqueProducts;
+    }
+
+    /*
+     *   Takes in a one CVE data object and one String with Product name
+     *   Returns an Array of String with all vulnerable Version for that CVE and Product
+     */
+    function getVulnerableVersions(cve, product) {
+        var versions = new Array();
+        var uniqueVersion = new Array();
+        var configs = getVulnerableConfigurations(cve);
+        for (var n = 0; n < configs.length; n++) {
+            if (configs[n].product == product) {
+                versions.push(configs[n].version);
+            }
+        }
+        $.each(versions, function (i, el) {
+            if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
+        });
+        return uniqueVersion;
+    }
+
+    /*
+     *   Takes in all the CVEs in Dataset
+     *   Returns Alphabetically sorted String Array of all vendors in data set.
+     */
+    function getAllVendors(data) {
+        var vendors = new Array();
+        var uniqueVendors = new Array();
+        for (var i = 0; i < data.length; i++) {
+            var tmp = getVulnerableVendors(data[i]);
+            $.each(tmp, function (i, el) {
+                vendors.push(el);
+            });
+        }
+        $.each(vendors, function (i, el) {
+            if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
+        });
+        uniqueVendors.sort(function (a, b) {
+            return d3.ascending(a, b);
+        });
+        return uniqueVendors;
+    }
+
+    /*
+     *   Takes in all the CVEs in Dataset
+     *   Returns Alphabetically sorted String Array of all the Products in data set.
+     */
+    function getAllProducts(data) {
+        var products = new Array();
+        var uniqueProducts = new Array();
+        for (var i = 0; i < data.length; i++) {
+            var tmp = getVulnerableProducts(data[i]);
+            $.each(tmp, function (i, el) {
+                products.push(el);
+            });
+        }
+        $.each(products, function (i, el) {
+            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+        });
+        uniqueProducts.sort(function (a, b) {
+            return d3.ascending(a, b);
+        });
+        return uniqueProducts;
+    }
+
+    /*
+     *   Takes in all the CVEs in Dataset and a String of Vendor
+     *   Returns Alphabetically sorted String Array of all the Products for that Vendor in data set.
+     */
+    function getVendorProducts(data, vendor) {
+        var products = new Array();
+        var uniqueProducts = new Array();
+        for (var i = 0; i < data.length; i++) {
+            var tmp = getVulnerableProducts(data[i], vendor);
+            $.each(tmp, function (i, el) {
+                products.push(el);
+            });
+        }
+        $.each(products, function (i, el) {
+            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+        });
+        uniqueProducts.sort(function (a, b) {
+            return d3.ascending(a, b);
+        });
+        return uniqueProducts;
+    }
+
+
+    d3.json("db_dump_422.json", function (data) {
+        console.log(getVendorProducts(data, "microsoft"));
     });
 
 </script>
