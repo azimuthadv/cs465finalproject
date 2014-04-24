@@ -194,16 +194,16 @@
     var yScale = d3.scale.ordinal();
     var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
     var yAxis = d3.svg.axis().scale(yScale).orient("left");
+
     var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-    d3.json("db_dump_4202.json", function (data) {
+    d3.json("db_dump_422.json", function (data) {
         xScale.range([0, width - margin.left - margin.right])
                 .nice()
                 .domain(d3.extent(data, function (d, i) {
                     return getTime(d);
                 }));
-        yScale.range([height - margin.bottom - margin.top, margin.top]).domain(getAllVendors(data));
-        console.log(yScale.domain());
+        yScale.rangePoints([height - margin.bottom - margin.top, margin.top]).domain(getAllVendors(data));
 
         // Create the canvas area
         var svg = d3.select("body").append("svg")
@@ -241,6 +241,7 @@
                 return d3.select(this.parentNode).attr("cx");
             },
             "cy": function (d) {
+                console.log(d + " " + yScale(d));
                 return yScale(d);
             },
             "vendor": function (d) {
