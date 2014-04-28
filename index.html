@@ -7,7 +7,7 @@
     <style>
         .axis text {
             font-family: sans-serif;
-            font-size: 11px;
+            font-size: 10pt;
         }
 
         .axis path,
@@ -127,7 +127,7 @@ function getAllVendors(data) {
         if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
     });
     uniqueVendors.sort(function (a, b) {
-        return d3.ascending(a, b);
+        return d3.descending(a, b);
     });
     return uniqueVendors;
 }
@@ -149,7 +149,7 @@ function getAllProducts(data) {
         if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
     });
     uniqueProducts.sort(function (a, b) {
-        return d3.ascending(a, b);
+        return d3.descending(a, b);
     });
     return uniqueProducts;
 }
@@ -171,7 +171,7 @@ function getVendorProducts(data, vendor) {
         if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
     });
     uniqueProducts.sort(function (a, b) {
-        return d3.ascending(a, b);
+        return d3.descending(a, b);
     });
     return uniqueProducts;
 }
@@ -221,7 +221,7 @@ var xScale = d3.time.scale();
 var yScale = d3.scale.ordinal();
 var xScale2 = d3.time.scale();
 var yScale2 = d3.scale.linear();
-var cScale = d3.scale.category20();
+var cScale = d3.scale.quantize();
 var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
 var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
 var yAxis = d3.svg.axis().scale(yScale).orient("left");
@@ -233,8 +233,8 @@ var yAxis = d3.svg.axis().scale(yScale).orient("left");
 
 var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-d3.json("db_dump_4222.json", function (data) {
-    var products = getVendorProducts(data, "hp");
+d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
+    var products = getVendorProducts(data, "microsoft");
     xScale.range([0, width])
             .nice()
             .domain(d3.extent(data, function (d, i) {
@@ -245,8 +245,8 @@ d3.json("db_dump_4222.json", function (data) {
             .domain(xScale.domain());
     //yScale.rangePoints([height, 0]).domain(getAllVendors(data));
     yScale.rangePoints([height, 0]).domain(products);
-    yScale2.range([height2, 0]).domain([0, getMaxCVEsSameDay(data, "hp")]);
-
+    yScale2.range([height2, 0]).domain([0, getMaxCVEsSameDay(data, "microsoft")]);
+    cScale.range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
     // Create the canvas area
     var svg = d3.select("body").append("svg")
             .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom});
@@ -283,7 +283,7 @@ d3.json("db_dump_4222.json", function (data) {
     var dots = timeGroups
             .selectAll("circle")
             .data(function (d) {
-                return getVulnerableProducts(d, "hp");
+                return getVulnerableProducts(d, "microsoft");
             })
             .enter()
             .append("circle");
@@ -300,22 +300,22 @@ d3.json("db_dump_4222.json", function (data) {
             return d;
         },
         "fill": function (d, i) {
-            return cScale(d3.select(this.parentNode).node().__data__.id);
+            return cScale(d3.select(this.parentNode).node().__data__.cvss);
         },
-        "r": 3
+        "r": 2
     });
 
 
     // create the Area in Small Graph
     var lastDate = new Date();
     var count = 1;
-    var line2 = d3.svg.line()
+    var area2 = d3.svg.area()
             .x(function (d) {
                 return xScale(getTime(d));
-            })
-            .y(function (d) {
+            }).y0(height2)
+            .y1(function (d) {
                 var curDate = d3.time.day(getTime(d));
-                if (getVulnerableProducts(d, "hp").length < 1) {
+                if (getVulnerableProducts(d, "microsoft").length < 1) {
                     return yScale2(0);
                 }
                 else if (lastDate.getTime() == curDate.getTime()) {
@@ -325,15 +325,15 @@ d3.json("db_dump_4222.json", function (data) {
                     count = 1;
                 }
                 return yScale2(count);
-            });
+            }).interpolate("monotone");
 
 
     canvas2.append("path")
             .datum(data.sort(function (a, b) {
-                return d3.ascending(getTime(a), getTime(b));
+                return d3.descending(getTime(a), getTime(b));
             }))
             .attr("class", "line")
-            .attr("d", line2).style({"fill": "none", "stroke": "blue"});
+            .attr("d", area2).style({"fill": "steelblue", "stroke": "red"});
 
     // draw the axes
     canvas.append("g")
