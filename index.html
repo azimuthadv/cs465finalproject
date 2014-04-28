@@ -21,250 +21,340 @@
 <body>
 <script type="text/javascript">
 
-    /*
-     *   Takes in a one CVE data object
-     *   Returns All Configurations that are vulnerable with each part, vendor, product and version
-     */
-    function getVulnerableConfigurations(cve) {
-        var parts = new Array();
-        for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
-            var tmp = cve.vulnerable_configuration[i].split(":");
-            var tmp2 = {};
-            tmp.forEach(function (x, i) {
-                if (i == 1) {
-                    return tmp2.part = x.replace("/", "");
-                }
-                if (i == 2) {
-                    return tmp2.vendor = x;
-                }
-                if (i == 3) {
-                    return tmp2.product = x;
-                }
-                if (i == 4) {
-                    return tmp2.version = x;
-                }
-            });
-            parts.push(tmp2);
+/*
+ *   Takes in a one CVE data object
+ *   Returns All Configurations that are vulnerable with each part, vendor, product and version
+ */
+function getVulnerableConfigurations(cve) {
+    var parts = new Array();
+    for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
+        var tmp = cve.vulnerable_configuration[i].split(":");
+        var tmp2 = {};
+        tmp.forEach(function (x, i) {
+            if (i == 1) {
+                return tmp2.part = x.replace("/", "");
+            }
+            if (i == 2) {
+                return tmp2.vendor = x;
+            }
+            if (i == 3) {
+                return tmp2.product = x;
+            }
+            if (i == 4) {
+                return tmp2.version = x;
+            }
+        });
+        parts.push(tmp2);
 
-        }
-        ;
-        return parts;
     }
     ;
+    return parts;
+}
+;
 
-    /*
-     *   Takes in a one CVE data object
-     *   Returns an Array of String with all vulnerable Vendors for that CVE
-     */
-    function getVulnerableVendors(cve) {
-        var vendors = new Array();
-        var uniqueVendors = new Array();
-        var configs = getVulnerableConfigurations(cve);
-        for (var n = 0; n < configs.length; n++) {
-            vendors.push(configs[n].vendor);
-        }
-        $.each(vendors, function (i, el) {
-            if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
-        });
-        return uniqueVendors;
+/*
+ *   Takes in a one CVE data object
+ *   Returns an Array of String with all vulnerable Vendors for that CVE
+ */
+function getVulnerableVendors(cve) {
+    var vendors = new Array();
+    var uniqueVendors = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        vendors.push(configs[n].vendor);
     }
-
-
-    /*
-     *   Takes in a one CVE data object and optionally one String with Vendor name
-     *   Returns an Array of String with all vulnerable Products for that CVE and Vendor if vendor was provided, if not returns all vulnerable products
-     */
-    function getVulnerableProducts(cve, vendor) {
-        var products = new Array();
-        var uniqueProducts = new Array();
-        var configs = getVulnerableConfigurations(cve);
-        for (var n = 0; n < configs.length; n++) {
-            if (vendor != null && configs[n].vendor == vendor) {
-                products.push(configs[n].product);
-            } else if (vendor == null) {
-                products.push(configs[n].product);
-            }
-        }
-        $.each(products, function (i, el) {
-            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
-        });
-        return uniqueProducts;
-    }
-
-    /*
-     *   Takes in a one CVE data object and one String with Product name
-     *   Returns an Array of String with all vulnerable Version for that CVE and Product
-     */
-    function getVulnerableVersions(cve, product) {
-        var versions = new Array();
-        var uniqueVersion = new Array();
-        var configs = getVulnerableConfigurations(cve);
-        for (var n = 0; n < configs.length; n++) {
-            if (configs[n].product == product) {
-                versions.push(configs[n].version);
-            }
-        }
-        $.each(versions, function (i, el) {
-            if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
-        });
-        return uniqueVersion;
-    }
-
-    /*
-     *   Takes in all the CVEs in Dataset
-     *   Returns Alphabetically sorted String Array of all vendors in data set.
-     */
-    function getAllVendors(data) {
-        var vendors = new Array();
-        var uniqueVendors = new Array();
-        for (var i = 0; i < data.length; i++) {
-            var tmp = getVulnerableVendors(data[i]);
-            $.each(tmp, function (i, el) {
-                vendors.push(el);
-            });
-        }
-        $.each(vendors, function (i, el) {
-            if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
-        });
-        uniqueVendors.sort(function (a, b) {
-            return d3.ascending(a, b);
-        });
-        return uniqueVendors;
-    }
-
-    /*
-     *   Takes in all the CVEs in Dataset
-     *   Returns Alphabetically sorted String Array of all the Products in data set.
-     */
-    function getAllProducts(data) {
-        var products = new Array();
-        var uniqueProducts = new Array();
-        for (var i = 0; i < data.length; i++) {
-            var tmp = getVulnerableProducts(data[i]);
-            $.each(tmp, function (i, el) {
-                products.push(el);
-            });
-        }
-        $.each(products, function (i, el) {
-            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
-        });
-        uniqueProducts.sort(function (a, b) {
-            return d3.ascending(a, b);
-        });
-        return uniqueProducts;
-    }
-
-    /*
-     *   Takes in all the CVEs in Dataset and a String of Vendor
-     *   Returns Alphabetically sorted String Array of all the Products for that Vendor in data set.
-     */
-    function getVendorProducts(data, vendor) {
-        var products = new Array();
-        var uniqueProducts = new Array();
-        for (var i = 0; i < data.length; i++) {
-            var tmp = getVulnerableProducts(data[i], vendor);
-            $.each(tmp, function (i, el) {
-                products.push(el);
-            });
-        }
-        $.each(products, function (i, el) {
-            if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
-        });
-        uniqueProducts.sort(function (a, b) {
-            return d3.ascending(a, b);
-        });
-        return uniqueProducts;
-    }
-
-    /*
-     *   Takes in a one CVE data object
-     *   Returns Formatted publishing time.
-     */
-    function getTime(cve) {
-        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
-        var time = cve.Published;
-        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
-        return format.parse(time2);
-    }
-
-    // Local state available to the generator through the closure
-    var margin = {top: 20, bottom: 20, left: 50, right: 20};
-    var width = 1000, height = 500;
-    var xScale = d3.time.scale();
-    var yScale = d3.scale.ordinal();
-    var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
-    var yAxis = d3.svg.axis().scale(yScale).orient("left");
-
-    var xAxisLabel = "", yAxisLabel = "", Title = "";
-
-    d3.json("db_dump_422.json", function (data) {
-        xScale.range([0, width - margin.left - margin.right])
-                .nice()
-                .domain(d3.extent(data, function (d, i) {
-                    return getTime(d);
-                }));
-        yScale.rangePoints([height - margin.bottom - margin.top, margin.top]).domain(getAllVendors(data));
-
-        // Create the canvas area
-        var svg = d3.select("body").append("svg")
-                .attr({width: width, height: height});
-
-        var canvas = svg.append("g")
-                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-        // create the timeGroups
-        var timeGroups = canvas.append("g")
-                .selectAll("g")
-                .data(data)
-                .enter()
-                .append("g");
-
-        // set the parent Time in cx
-        timeGroups.attr({
-            "cx": function (d) {
-                return xScale(getTime(d));
-            }
-        });
-
-        // create the dots
-        var dots = timeGroups
-                .selectAll("circle")
-                .data(function (d) {
-                    return getVulnerableVendors(d);
-                })
-                .enter()
-                .append("circle");
-
-        // set the dot positions and radius
-        dots.attr({
-            "cx": function (d) {
-                return d3.select(this.parentNode).attr("cx");
-            },
-            "cy": function (d) {
-                console.log(d + " " + yScale(d));
-                return yScale(d);
-            },
-            "vendor": function (d) {
-                return d;
-            },
-            "r": 4
-        });
-
-
-        // draw the axes
-        svg.append("g")
-                .attr(
-                {"class": "axis",
-                    "transform": "translate(" + margin.left + "," + (height - margin.bottom) + ")"})
-                .call(xAxis);
-
-
-        svg.append("g")
-                .attr({"class": "axis",
-                    "transform": "translate(" + (margin.left) + "," + margin.top + ")"})
-                .call(yAxis);
-
+    $.each(vendors, function (i, el) {
+        if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
     });
+    return uniqueVendors;
+}
+
+
+/*
+ *   Takes in a one CVE data object and optionally one String with Vendor name
+ *   Returns an Array of String with all vulnerable Products for that CVE and Vendor if vendor was provided, if not returns all vulnerable products
+ */
+function getVulnerableProducts(cve, vendor) {
+    var products = new Array();
+    var uniqueProducts = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        if (vendor != null && configs[n].vendor == vendor) {
+            products.push(configs[n].product);
+        } else if (vendor == null) {
+            products.push(configs[n].product);
+        }
+    }
+    $.each(products, function (i, el) {
+        if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+    });
+    return uniqueProducts;
+}
+
+/*
+ *   Takes in a one CVE data object and one String with Product name
+ *   Returns an Array of String with all vulnerable Version for that CVE and Product
+ */
+function getVulnerableVersions(cve, product) {
+    var versions = new Array();
+    var uniqueVersion = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        if (configs[n].product == product) {
+            versions.push(configs[n].version);
+        }
+    }
+    $.each(versions, function (i, el) {
+        if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
+    });
+    return uniqueVersion;
+}
+
+/*
+ *   Takes in all the CVEs in Dataset
+ *   Returns Alphabetically sorted String Array of all vendors in data set.
+ */
+function getAllVendors(data) {
+    var vendors = new Array();
+    var uniqueVendors = new Array();
+    for (var i = 0; i < data.length; i++) {
+        var tmp = getVulnerableVendors(data[i]);
+        $.each(tmp, function (i, el) {
+            vendors.push(el);
+        });
+    }
+    $.each(vendors, function (i, el) {
+        if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
+    });
+    uniqueVendors.sort(function (a, b) {
+        return d3.ascending(a, b);
+    });
+    return uniqueVendors;
+}
+
+/*
+ *   Takes in all the CVEs in Dataset
+ *   Returns Alphabetically sorted String Array of all the Products in data set.
+ */
+function getAllProducts(data) {
+    var products = new Array();
+    var uniqueProducts = new Array();
+    for (var i = 0; i < data.length; i++) {
+        var tmp = getVulnerableProducts(data[i]);
+        $.each(tmp, function (i, el) {
+            products.push(el);
+        });
+    }
+    $.each(products, function (i, el) {
+        if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+    });
+    uniqueProducts.sort(function (a, b) {
+        return d3.ascending(a, b);
+    });
+    return uniqueProducts;
+}
+
+/*
+ *   Takes in all the CVEs in Dataset and a String of Vendor
+ *   Returns Alphabetically sorted String Array of all the Products for that Vendor in data set.
+ */
+function getVendorProducts(data, vendor) {
+    var products = new Array();
+    var uniqueProducts = new Array();
+    for (var i = 0; i < data.length; i++) {
+        var tmp = getVulnerableProducts(data[i], vendor);
+        $.each(tmp, function (i, el) {
+            products.push(el);
+        });
+    }
+    $.each(products, function (i, el) {
+        if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+    });
+    uniqueProducts.sort(function (a, b) {
+        return d3.ascending(a, b);
+    });
+    return uniqueProducts;
+}
+
+/*
+ *   Takes in a collection of CVEs
+ *   Returns Max CVEs on one Day for a given Vendor
+ */
+function getMaxCVEsSameDay(data, vendor) {
+    var lastDate = new Date();
+    var count = 1;
+    var maxCount = 0;
+    for (var i = 0; i < data.length; i++) {
+        var curDate = d3.time.day(getTime(data[i]));
+        if (lastDate.getTime() == curDate.getTime()) {
+            if (getVulnerableProducts(data[i], vendor).length > 0) {
+                count++;
+            }
+            if (maxCount <= count) {
+                maxCount = count;
+            }
+
+        } else if (lastDate.getTime() != curDate.getTime()) {
+            lastDate = curDate;
+            count = 1;
+        }
+    }
+    return maxCount;
+}
+
+/*
+ *   Takes in a one CVE data object
+ *   Returns Formatted publishing time.
+ */
+function getTime(cve) {
+    var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+    var time = cve.Published;
+    var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+    return format.parse(time2);
+}
+
+// Local state available to the generator through the closure
+var margin = {top: 10, bottom: 100, left: 50, right: 20},
+        margin2 = {top: 430, bottom: 20, left: 50, right: 20 },
+        width = 1000 - margin.left - margin.right, height = 500 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
+var xScale = d3.time.scale();
+var yScale = d3.scale.ordinal();
+var xScale2 = d3.time.scale();
+var yScale2 = d3.scale.linear();
+var cScale = d3.scale.category20();
+var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
+var yAxis = d3.svg.axis().scale(yScale).orient("left");
+
+
+//var brush = d3.svg.brush()
+//        .x(xScale2)
+//        .on("brush", brushed);
+
+var xAxisLabel = "", yAxisLabel = "", Title = "";
+
+d3.json("db_dump_4222.json", function (data) {
+    var products = getVendorProducts(data, "hp");
+    xScale.range([0, width])
+            .nice()
+            .domain(d3.extent(data, function (d, i) {
+                return getTime(d);
+            }));
+    xScale2.range([0, width])
+            .nice()
+            .domain(xScale.domain());
+    //yScale.rangePoints([height, 0]).domain(getAllVendors(data));
+    yScale.rangePoints([height, 0]).domain(products);
+    yScale2.range([height2, 0]).domain([0, getMaxCVEsSameDay(data, "hp")]);
+
+    // Create the canvas area
+    var svg = d3.select("body").append("svg")
+            .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom});
+
+    svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", width)
+            .attr("height", height);
+
+    //Main Graph
+    var canvas = svg.append("g").attr("class", "focus")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+    //Small Bottom Graph
+    var canvas2 = svg.append("g").attr("class", "context")
+            .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+    // create the timeGroups in Main Graph
+    var timeGroups = canvas.append("g")
+            .selectAll("g")
+            .data(data)
+            .enter()
+            .append("g");
+
+    // set the parent Time in cx
+    timeGroups.attr({
+        "cx": function (d) {
+            return xScale(getTime(d));
+        }
+    });
+
+    // create the dots in Main Graph
+    var dots = timeGroups
+            .selectAll("circle")
+            .data(function (d) {
+                return getVulnerableProducts(d, "hp");
+            })
+            .enter()
+            .append("circle");
+
+    // set the dot positions and radius
+    dots.attr({
+        "cx": function (d) {
+            return d3.select(this.parentNode).attr("cx");
+        },
+        "cy": function (d) {
+            return yScale(d);
+        },
+        "vendor": function (d) {
+            return d;
+        },
+        "fill": function (d, i) {
+            return cScale(d3.select(this.parentNode).node().__data__.id);
+        },
+        "r": 3
+    });
+
+
+    // create the Area in Small Graph
+    var lastDate = new Date();
+    var count = 1;
+    var line2 = d3.svg.line()
+            .x(function (d) {
+                return xScale(getTime(d));
+            })
+            .y(function (d) {
+                var curDate = d3.time.day(getTime(d));
+                if (getVulnerableProducts(d, "hp").length < 1) {
+                    return yScale2(0);
+                }
+                else if (lastDate.getTime() == curDate.getTime()) {
+                    count++;
+                } else if (lastDate.getTime() != curDate.getTime()) {
+                    lastDate = curDate;
+                    count = 1;
+                }
+                return yScale2(count);
+            });
+
+
+    canvas2.append("path")
+            .datum(data.sort(function (a, b) {
+                return d3.ascending(getTime(a), getTime(b));
+            }))
+            .attr("class", "line")
+            .attr("d", line2).style({"fill": "none", "stroke": "blue"});
+
+    // draw the axes
+    canvas.append("g")
+            .attr(
+            {"class": "axis",
+                "transform": "translate(" + 0 + "," + (height) + ")"})
+            .call(xAxis);
+
+
+    canvas.append("g")
+            .attr({"class": "axis",
+                "transform": "translate(" + 0 + "," + 0 + ")"})
+            .call(yAxis);
+
+    canvas2.append("g")
+            .attr(
+            {"class": "axis",
+                "transform": "translate(" + 0 + "," + (height2) + ")"})
+            .call(xAxis2);
+
+});
 
 </script>
 </body>
