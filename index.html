@@ -5,17 +5,49 @@
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
     <style>
-        .axis text {
+
+        .axisy text {
             font-family: sans-serif;
-            font-size: 10pt;
+            font-size: 8pt;
         }
 
-        .axis path,
-        .axis line {
+        .axisy path,
+        .axisy line {
             fill: none;
             stroke: gray;
             shape-rendering: crispEdges;
         }
+
+        .axisx text {
+            font-family: sans-serif;
+            font-size: 14pt;
+        }
+
+        .axisx path,
+        .axisx line {
+            fill: none;
+            stroke: gray;
+            shape-rendering: crispEdges;
+        }
+
+        .axisx2 text {
+            font-family: sans-serif;
+            font-size: 14pt;
+        }
+
+        .axisx2 path,
+        .axisx2 line {
+            fill: none;
+            stroke: gray;
+            shape-rendering: crispEdges;
+        }
+
+        .brush .extent {
+            stroke: #fff;
+            fill-opacity: .125;
+            shape-rendering: crispEdges;
+        }
+
     </style>
 </head>
 <body>
@@ -213,10 +245,12 @@ function getTime(cve) {
     return format.parse(time2);
 }
 
+console.log($(document).width());
+
 // Local state available to the generator through the closure
-var margin = {top: 10, bottom: 100, left: 50, right: 20},
-        margin2 = {top: 430, bottom: 20, left: 50, right: 20 },
-        width = 1000 - margin.left - margin.right, height = 500 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
+var margin = {top: 110, bottom: 40, left: 200, right: 20},
+        margin2 = {top: 10, bottom: 420, left: 200, right: 20 },
+        width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
 var xScale = d3.time.scale();
 var yScale = d3.scale.ordinal();
 var xScale2 = d3.time.scale();
@@ -227,50 +261,52 @@ var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
 var yAxis = d3.svg.axis().scale(yScale).orient("left");
 
 
-//var brush = d3.svg.brush()
-//        .x(xScale2)
-//        .on("brush", brushed);
+var brush = d3.svg.brush()
+        .x(xScale2)
+        .on("brush", brushed);
 
 var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
-    var products = getVendorProducts(data, "microsoft");
-    xScale.range([0, width])
+d3.json("http://162.243.5.105:5000/cves/apple", function (data) {
+    var products = getVendorProducts(data, "apple");
+    height = ((products.length * 20) - margin.top - margin.bottom) > 500 ? (products.length * 20) - margin.top - margin.bottom : 500;
+    var totalTime = d3.extent(data, function (d, i) {
+        return getTime(d);
+    });
+    xScale.range([3, width])
             .nice()
-            .domain(d3.extent(data, function (d, i) {
-                return getTime(d);
-            }));
-    xScale2.range([0, width])
+            .domain(totalTime);
+    xScale2.range([3, width])
             .nice()
             .domain(xScale.domain());
     //yScale.rangePoints([height, 0]).domain(getAllVendors(data));
-    yScale.rangePoints([height, 0]).domain(products);
-    yScale2.range([height2, 0]).domain([0, getMaxCVEsSameDay(data, "microsoft")]);
+    yScale.rangePoints([height - 3, 1]).domain(products);
+    yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, "apple")]);
     cScale.range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
+    var svg2 = d3.select("body").append("svg")
+            .attr({width: width + margin.left + margin.right, height: height - margin.bottom, id: "chart2"}).style("position", "fixed");
+
     // Create the canvas area
     var svg = d3.select("body").append("svg")
-            .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom});
-
+            .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"});
     svg.append("defs").append("clipPath")
             .attr("id", "clip")
             .append("rect")
             .attr("width", width)
             .attr("height", height);
-
     //Main Graph
     var canvas = svg.append("g").attr("class", "focus")
             .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
     //Small Bottom Graph
-    var canvas2 = svg.append("g").attr("class", "context")
+    var canvas2 = svg2.append("g").attr("class", "context")
             .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
 
     // create the timeGroups in Main Graph
-    var timeGroups = canvas.append("g")
-            .selectAll("g")
+    var timeGroups = canvas.selectAll("g")
             .data(data)
             .enter()
-            .append("g");
+            .append("g").attr("class", "time");
 
     // set the parent Time in cx
     timeGroups.attr({
@@ -283,7 +319,7 @@ d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
     var dots = timeGroups
             .selectAll("circle")
             .data(function (d) {
-                return getVulnerableProducts(d, "microsoft");
+                return getVulnerableProducts(d, "apple");
             })
             .enter()
             .append("circle");
@@ -302,7 +338,8 @@ d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
         "fill": function (d, i) {
             return cScale(d3.select(this.parentNode).node().__data__.cvss);
         },
-        "r": 2
+        "clip-path": "url(#clip)",
+        "r": 3
     });
 
 
@@ -315,7 +352,7 @@ d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
             }).y0(height2)
             .y1(function (d) {
                 var curDate = d3.time.day(getTime(d));
-                if (getVulnerableProducts(d, "microsoft").length < 1) {
+                if (getVulnerableProducts(d, "apple").length < 1) {
                     return yScale2(0);
                 }
                 else if (lastDate.getTime() == curDate.getTime()) {
@@ -335,27 +372,45 @@ d3.json("http://587cd4ef.ngrok.com/cves/microsoft", function (data) {
             .attr("class", "line")
             .attr("d", area2).style({"fill": "steelblue", "stroke": "red"});
 
+
     // draw the axes
     canvas.append("g")
             .attr(
-            {"class": "axis",
+            {"class": "axisx",
                 "transform": "translate(" + 0 + "," + (height) + ")"})
             .call(xAxis);
 
 
     canvas.append("g")
-            .attr({"class": "axis",
+            .attr({"class": "axisy",
                 "transform": "translate(" + 0 + "," + 0 + ")"})
             .call(yAxis);
 
     canvas2.append("g")
             .attr(
-            {"class": "axis",
+            {"class": "axisx2",
                 "transform": "translate(" + 0 + "," + (height2) + ")"})
             .call(xAxis2);
 
-});
+    canvas2.append("g").attr("class", "x brush").call(brush).selectAll("rect").attr("y", -15).attr("height", height2 + 15)
 
+
+});
+function brushed() {
+    console.log(d3.selectAll("circle"));
+    xScale.domain(brush.empty() ? xScale2.domain() : brush.extent());
+    d3.selectAll(".time").attr({
+        "cx": function (d) {
+            return xScale(getTime(d));
+        }
+    });
+    d3.selectAll("circle").attr({
+        "cx": function (d) {
+            return d3.select(this.parentNode).attr("cx");
+        }
+    });
+    d3.select(".axisx").call(xAxis);
+}
 </script>
 </body>
 </html>
