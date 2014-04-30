@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html>
     <!--
+        NOTES
+        ======
+        * IMPORTANT: when doing a product search query since the search is done using regex, search for ":apple:" instead of "apple" if you want all apple products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have "apple" in the product name or as part of the vendor name but aren't actually made by Apple
+
         TODO LIST
         ==========
         [ ] figure out why svg dimensions extend off page without hardcoded -25
@@ -8,6 +12,9 @@
         [ ] figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
         [ ] move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
         [ ] add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
+        [ ] clip path is too close to top edge - fix it so dots aren't cut off
+        [ ] add guides to x and y axis (only on CVE hover or always?)
+        [ ] (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
     -->
 
     <head>
@@ -283,7 +290,7 @@
 
             var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-            d3.json("http://162.243.5.105:5000/cves/apple", function (data) {
+            d3.json("http://162.243.5.105:5000/cves/:apple:", function (data) {
                 var products = getVendorProducts(data, "apple");
                 height = ((products.length * 20) - margin.top - margin.bottom) > 500 ? (products.length * 20) - margin.top - margin.bottom : 500;
                 var totalTime = d3.extent(data, function (d, i) {
@@ -400,7 +407,8 @@
                 canvas.append("g")
                         .attr({"class": "axisy",
                             "transform": "translate(" + 0 + "," + 0 + ")"})
-                        .call(yAxis);
+                        .call(yAxis).selectAll(".tick text")
+                            .call(wrap, yAxis);
 
                 canvas2.append("g")
                         .attr(
@@ -412,6 +420,31 @@
 
 
             });
+
+            function wrap(text, width) {
+                text.each(function() {
+                    var text = d3.select(this),
+                        words = text.text().split(/\_/).reverse(),
+                        word,
+                        line = [],
+                        lineNumber = 0,
+                        lineHeight = 1.1, // ems
+                        y = text.attr("y"),
+                        dy = parseFloat(text.attr("dy")),
+                        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                    while (word = words.pop()) {
+                        line.push(word);
+                        tspan.text(line.join(" "));
+                        if (tspan.node().getComputedTextLength() > width) {
+                            line.pop();
+                            tspan.text(line.join(" "));
+                            line = [word];
+                            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                        }
+                    }
+                })
+            };
+
             function brushed() {
                 console.log(d3.selectAll("circle"));
                 xScale.domain(brush.empty() ? xScale2.domain() : brush.extent());
@@ -427,6 +460,7 @@
                 });
                 d3.select(".axisx").call(xAxis);
             }
+
         </script>
     </body>
 </html>
