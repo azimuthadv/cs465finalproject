@@ -29,6 +29,36 @@
         <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
         
         <style>
+            #tooltip {
+                position: absolute;
+                margin-left: auto;
+                margin-right: auto;
+                width: auto;
+                height: auto;
+                padding: 10px;
+                background-color: forestgreen;
+                text-decoration-color: white;
+                -webkit-border-radius: 10px;
+                -moz-border-radius: 10px;
+                border-radius: 10px;
+                -webkit-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+                -moz-box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+                box-shadow: 4px 4px 10px rgba(0, 0, 0, 0.4);
+                pointer-events: none;
+            }
+
+            #tooltip.hidden {
+                display: none;
+            }
+
+            #tooltip p {
+                margin: 0;
+                font-family: sans-serif;
+                font-size: 16px;
+                line-height: 20px;
+                color: white;
+            }
+
             .axisy text {
             font-family: sans-serif;
             font-size: 10pt;
@@ -74,13 +104,23 @@
     </head>
     <body>
         <!-- HTML Code -->
+        <div id="tooltip" class="hidden">
+            <p><strong><span id="cveid">Value</span></strong></p>
 
+            <p><strong>CVSS Base Score:</strong> <span id="cvss">Value</span></p>
+
+            <p><strong>Date:</strong> <span id="date">Value</span></p>
+
+            <p><strong>Description:</strong> <span id="desc">Value</span></p>
+        </div>
         <!-- D3 Code -->
         <script type="text/javascript">
-            /*
-             *  Takes in a single CVE object
-             *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
-             */
+        var cursorX;
+        var cursorY;
+        /*
+         *  Takes in a single CVE object
+         *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
+         */
             function getVulnerableConfigurations(cve) {
                 var cpes = new Array();
                 for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
@@ -241,7 +281,7 @@
                 var count = 1;
                 var maxCount = 0;
                 for (var i = 0; i < data.length; i++) {
-                    var curDate = d3.time.day(getTime(data[i]));
+                    var curDate = d3.time.week(getTime(data[i]));
                     if (lastDate.getTime() == curDate.getTime()) {
                         if (getVulnerableProducts(data[i], vendor).length > 0) {
                             count++;
@@ -269,11 +309,9 @@
                 return format.parse(time2);
             }
 
-            console.log($(document).width());
-
             // Local state available to the generator through the closure
-            var margin = {top: 110, bottom: 40, left: 150, right: 20},
-                    margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
+        var margin = {top: 110, bottom: 20, left: 150, right: 20},
+                margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
                     width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
             var xScale = d3.time.scale();
             var yScale = d3.scale.ordinal();
@@ -294,6 +332,7 @@
             d3.json("http://162.243.5.105:5000/cves/:apple:", function (data) {
                 var products = getVendorProducts(data, "apple");
                 height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
+                var xAxisBottom = height > 500 ? window.innerHeight : 500;
                 var totalTime = d3.extent(data, function (d, i) {
                     return getTime(d);
                 });
@@ -307,24 +346,33 @@
                 yScale.rangePoints([height - 3, 1]).domain(products);
                 yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, "apple")]);
                 cScale.range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
-                var svg2 = d3.select("body").append("svg")
-                        .attr({width: width + margin.left + margin.right, height: height - margin.bottom, id: "chart2"}).style("position", "fixed");
 
+                var svg3 = d3.select("body").append("svg")
+                        .attr({width: width + margin.left + margin.right, height: xAxisBottom, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
+                var svg2 = d3.select("body").append("svg")
+                        .attr({width: width + margin.left + margin.right, height: margin.top, id: "chart2"}).style("position", "fixed").style("pointer-events", "none");
                 // Create the canvas area
                 var svg = d3.select("body").append("svg")
-                        .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"});
+                        .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"}).style("pointer-events", "all");
+
                 svg.append("defs").append("clipPath")
                         .attr("id", "clip")
                         .append("rect")
-                        .attr("width", width)
-                        .attr("height", height);
+                        .attr("width", width + 20)
+                        .attr("height", height + 20)
+                        .attr("x", -10)
+                        .attr("y", -10);
                 //Main Graph
                 var canvas = svg.append("g").attr("class", "focus")
                         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-                //Small Bottom Graph
+                //Small Top Graph
                 var canvas2 = svg2.append("g").attr("class", "context")
                         .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+                //Bottom X Axis
+                var canvas3 = svg3.append("g").attr("class", "bottom")
+                        .attr("transform", "translate(" + margin2.left + "," + 0 + ")");
 
                 // create the timeGroups in Main Graph
                 var timeGroups = canvas.selectAll("g")
@@ -338,6 +386,7 @@
                         return xScale(getTime(d));
                     }
                 });
+
 
                 // create the dots in Main Graph
                 var dots = timeGroups
@@ -362,9 +411,58 @@
                     "fill": function (d, i) {
                         return cScale(d3.select(this.parentNode).node().__data__.cvss);
                     },
+                    "cveid": function (d, i) {
+                        return d3.select(this.parentNode).node().__data__.id;
+                    },
                     "clip-path": "url(#clip)",
                     "r": 8,
                     "opacity": 0.7
+                }).on("mouseover", function (d) {
+                    canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+                    var points = new Array();
+                    canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+                        points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+                    });
+                    points.forEach(function (d) {
+                        canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+                    });
+                    var transform = d3.select(this).attr("transform");
+                    if (cursorX < (width + margin.left + margin.right) / 2) {
+                        d3.select("#tooltip")
+                                .style("right", 600 + "px").style("left", cursorX + "px");
+                    } else {
+                        d3.select("#tooltip").style("left", 600 + "px").style("right", (width + margin.left + margin.right - cursorX) + "px");
+                    }
+                    d3.select("#tooltip")
+                            .style("top", cursorY + "px").attr("transform", transform);
+
+
+                    d3.select("#tooltip")
+                            .select("#cveid")
+                            .text(d3.select(this.parentNode).node().__data__.id);
+
+                    d3.select("#tooltip")
+                            .select("#cvss")
+                            .text(d3.select(this.parentNode).node().__data__.cvss);
+
+                    d3.select("#tooltip")
+                            .select("#date")
+                            .text(d3.select(this.parentNode).node().__data__.Published);
+
+                    d3.select("#tooltip")
+                            .select("#desc")
+                            .text(d3.select(this.parentNode).node().__data__.summary);
+
+                    //Show the tooltip
+                    d3.select("#tooltip").classed("hidden", false);
+                });
+
+
+                dots.on("mouseout", function () {
+                    dots.attr("stroke", "none");
+                    dots.attr("opacity", 0.7);
+                    canvas.selectAll(".guides").remove();
+                    d3.select("#tooltip").classed("hidden", true);
                 });
 
 
@@ -376,7 +474,7 @@
                             return xScale(getTime(d));
                         }).y0(height2)
                         .y1(function (d) {
-                            var curDate = d3.time.day(getTime(d));
+                            var curDate = d3.time.week(getTime(d));
                             if (getVulnerableProducts(d, "apple").length < 1) {
                                 return yScale2(0);
                             }
@@ -399,10 +497,10 @@
 
 
                 // draw the axes
-                canvas.append("g")
+                canvas3.append("g")
                         .attr(
                         {"class": "axisx",
-                            "transform": "translate(" + 0 + "," + (height) + ")"})
+                            "transform": "translate(" + 0 + "," + (xAxisBottom - 35) + ")"})
                         .call(xAxis);
 
 
@@ -458,7 +556,6 @@
             };
 
             function brushed() {
-                console.log(d3.selectAll("circle"));
                 xScale.domain(brush.empty() ? xScale2.domain() : brush.extent());
                 d3.selectAll(".time").attr({
                     "cx": function (d) {
@@ -472,6 +569,11 @@
                 });
                 d3.select(".axisx").call(xAxis);
             }
+
+        document.onmousemove = function (e) {
+            cursorX = e.pageX;
+            cursorY = e.pageY;
+        }
 
         </script>
     </body>
