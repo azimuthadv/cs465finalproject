@@ -7,15 +7,14 @@
 
         TODO LIST
         ==========
-        [x] word wrap and capitalize axis labels
-        [ ] figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
-        [ ] fix getMaxCVEsSameDay; it's currently wrong (should be uniqe CVEs per day, and day might even be too small an interval)
-        [ ] figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
-        [ ] move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
-        [ ] add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
-        [ ] scales or clip path is too close to top edge - fix it so dots aren't cut off
-        [ ] add guides to x and y axis (only on CVE hover or always?)
-        [ ] (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
+        [x] MED: word wrap and capitalize axis labels
+        [ ] MED: figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
+        [ ] MED: figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
+        [x] HIGH: move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
+        [x] HIGH: add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
+        [x] MED: scales or clip path is too close to top edge - fix it so dots aren't cut off
+        [ ] HIGH: add guides to x and y axis (only on CVE hover or always?)
+        [x] LOW: (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
     -->
 
     <head>
@@ -100,10 +99,16 @@
             fill-opacity: .125;
             shape-rendering: crispEdges;
             }
+
+            select#vendorSelector {
+                position: fixed;
+            }
+
         </style>
     </head>
     <body>
         <!-- HTML Code -->
+        <select><optgroup label="Vendors" id="vendors"></optgroup></select><br/>
         <div id="tooltip" class="hidden">
             <p><strong><span id="cveid">Value</span></strong></p>
 
@@ -115,12 +120,43 @@
         </div>
         <!-- D3 Code -->
         <script type="text/javascript">
-        var cursorX;
-        var cursorY;
-        /*
-         *  Takes in a single CVE object
-         *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
-         */
+            // global var for vendors
+            var VENDORS;
+            $.ajax({
+                url: 'http://162.243.5.105:5000/vendors',
+                dataType: 'json',
+                async: false,
+                success: function(data) {
+                    VENDORS = data;
+                }
+            });
+
+            /**
+                This function allows us to dynamically set the currently displayed vendor.
+                After grabbing the new vendor string for use with the API URL, it calls a
+                function that redraws the graph.
+            */
+            function setVendor(vendor){
+                console.log("Redraw the graph using: " + vendor)
+            }
+            // build the popup menu
+            var menu = d3.select("#vendors");
+            VENDORS.forEach(function(x) {
+                menu.append("option").attr("value",x[0]).text(x[1]);
+            });
+
+            // set the behavior on a change to the menu (i.e., update the coloring)
+            d3.select("select").on("change", function() {
+                setVendor(this.value);
+            });
+
+            // used for tooltip drawing
+            var cursorX;
+            var cursorY;
+            /*
+             *  Takes in a single CVE object
+             *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
+             */
             function getVulnerableConfigurations(cve) {
                 var cpes = new Array();
                 for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
