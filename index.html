@@ -7,12 +7,13 @@
 
         TODO LIST
         ==========
-        [ ] figure out why svg dimensions extend off page without hardcoded -25
+        [x] word wrap and capitalize axis labels
+        [ ] figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
         [ ] fix getMaxCVEsSameDay; it's currently wrong (should be uniqe CVEs per day, and day might even be too small an interval)
         [ ] figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
         [ ] move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
         [ ] add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
-        [ ] clip path is too close to top edge - fix it so dots aren't cut off
+        [ ] scales or clip path is too close to top edge - fix it so dots aren't cut off
         [ ] add guides to x and y axis (only on CVE hover or always?)
         [ ] (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
     -->
@@ -30,7 +31,7 @@
         <style>
             .axisy text {
             font-family: sans-serif;
-            font-size: 8pt;
+            font-size: 10pt;
             }
 
             .axisy path,
@@ -42,7 +43,7 @@
 
             .axisx text {
             font-family: sans-serif;
-            font-size: 14pt;
+            font-size: 11pt;
             }
 
             .axisx path,
@@ -54,7 +55,7 @@
 
             .axisx2 text {
             font-family: sans-serif;
-            font-size: 14pt;
+            font-size: 11pt;
             }
 
             .axisx2 path,
@@ -271,8 +272,8 @@
             console.log($(document).width());
 
             // Local state available to the generator through the closure
-            var margin = {top: 110, bottom: 40, left: 200, right: 20},
-                    margin2 = {top: 10, bottom: 420, left: 200, right: 20 },
+            var margin = {top: 110, bottom: 40, left: 150, right: 20},
+                    margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
                     width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
             var xScale = d3.time.scale();
             var yScale = d3.scale.ordinal();
@@ -292,7 +293,7 @@
 
             d3.json("http://162.243.5.105:5000/cves/:apple:", function (data) {
                 var products = getVendorProducts(data, "apple");
-                height = ((products.length * 20) - margin.top - margin.bottom) > 500 ? (products.length * 20) - margin.top - margin.bottom : 500;
+                height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
                 var totalTime = d3.extent(data, function (d, i) {
                     return getTime(d);
                 });
@@ -362,7 +363,8 @@
                         return cScale(d3.select(this.parentNode).node().__data__.cvss);
                     },
                     "clip-path": "url(#clip)",
-                    "r": 3
+                    "r": 8,
+                    "opacity": 0.7
                 });
 
 
@@ -408,7 +410,7 @@
                         .attr({"class": "axisy",
                             "transform": "translate(" + 0 + "," + 0 + ")"})
                         .call(yAxis).selectAll(".tick text")
-                            .call(wrap, yAxis);
+                            .call(wrap, 140);
 
                 canvas2.append("g")
                         .attr(
@@ -421,6 +423,10 @@
 
             });
 
+            String.prototype.capitalize = function() {
+                return this.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
+            };
+
             function wrap(text, width) {
                 text.each(function() {
                     var text = d3.select(this),
@@ -428,21 +434,27 @@
                         word,
                         line = [],
                         lineNumber = 0,
-                        lineHeight = 1.1, // ems
+                        lineHeight = 1.0, // ems
                         y = text.attr("y"),
                         dy = parseFloat(text.attr("dy")),
-                        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                        dx = -0.75,
+                        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dx", dx + "em").attr("y", y).attr("dy", dy + "em");
                     while (word = words.pop()) {
-                        line.push(word);
+                        line.push(word.capitalize());
                         tspan.text(line.join(" "));
                         if (tspan.node().getComputedTextLength() > width) {
                             line.pop();
                             tspan.text(line.join(" "));
-                            line = [word];
-                            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                            line = [word.capitalize()];
+                            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("y", y).attr("dx", dx + "em").attr("dy", ++lineNumber * lineHeight + dy + "em").text(word.capitalize());
                         }
                     }
-                })
+                    text.each(function() {
+                        if (parseInt(this.getBBox().height) > 15.515625) {
+                            d3.select(this).attr("transform", "translate(" + 0 + "," + -(parseFloat(this.getBBox().height/3.0)) + ")");
+                        };
+                    });
+                });
             };
 
             function brushed() {
