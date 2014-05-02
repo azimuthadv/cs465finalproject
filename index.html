@@ -3,7 +3,7 @@
     <!--
         NOTES
         ======
-        * IMPORTANT: when doing a product search query since the search is done using regex, search for ":apple:" instead of "apple" if you want all apple products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have "apple" in the product name or as part of the vendor name but aren't actually made by Apple
+        * IMPORTANT: when doing a product search query since the search is done using regex, search for ":microsoft:" instead of "microsoft" if you want all microsoft products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have "microsoft" in the product name or as part of the vendor name but aren't actually made by microsoft
 
         TODO LIST
         ==========
@@ -15,6 +15,7 @@
         [x] MED: scales or clip path is too close to top edge - fix it so dots aren't cut off
         [ ] HIGH: add guides to x and y axis (only on CVE hover or always?)
         [x] LOW: (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
+        [ ] HIGH: change line graph/area to histogram
     -->
 
     <head>
@@ -102,13 +103,14 @@
 
             select#vendorSelector {
                 position: fixed;
+                left: 150px;
             }
 
         </style>
     </head>
     <body>
         <!-- HTML Code -->
-        <select><optgroup label="Vendors" id="vendors"></optgroup></select><br/>
+        <select id="vendorSelector"><optgroup label="Vendors" id="vendors"></optgroup></select><br/>
         <div id="tooltip" class="hidden">
             <p><strong><span id="cveid">Value</span></strong></p>
 
@@ -365,8 +367,8 @@
 
             var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-            d3.json("http://162.243.5.105:5000/cves/:apple:", function (data) {
-                var products = getVendorProducts(data, "apple");
+            d3.json("http://162.243.5.105:5000/cves/:microsoft:", function (data) {
+                var products = getVendorProducts(data, "microsoft");
                 height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
                 var xAxisBottom = height > 500 ? window.innerHeight : 500;
                 var totalTime = d3.extent(data, function (d, i) {
@@ -380,7 +382,7 @@
                         .domain(xScale.domain());
                 //yScale.rangePoints([height, 0]).domain(getAllVendors(data));
                 yScale.rangePoints([height - 3, 1]).domain(products);
-                yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, "apple")]);
+                yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, "microsoft")]);
                 cScale.range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
 
                 var svg3 = d3.select("body").append("svg")
@@ -428,7 +430,7 @@
                 var dots = timeGroups
                         .selectAll("circle")
                         .data(function (d) {
-                            return getVulnerableProducts(d, "apple");
+                            return getVulnerableProducts(d, "microsoft");
                         })
                         .enter()
                         .append("circle");
@@ -511,7 +513,7 @@
                         }).y0(height2)
                         .y1(function (d) {
                             var curDate = d3.time.week(getTime(d));
-                            if (getVulnerableProducts(d, "apple").length < 1) {
+                            if (getVulnerableProducts(d, "microsoft").length < 1) {
                                 return yScale2(0);
                             }
                             else if (lastDate.getTime() == curDate.getTime()) {
