@@ -87,7 +87,19 @@
 
             #chartContainer {
                 padding-top: 150px;
+            }
+
+            #chart1 {
                 z-index: -1;
+            }
+
+            #chart2 {
+                z-index: 9;
+                background-color: white;
+            }
+
+            #chart3 {
+                z-index: 8;
             }
 
             #infoContainer {
@@ -203,7 +215,6 @@
                 var target = document.getElementById('chart');
                 var spinner = new Spinner(opts).spin(target);
                 d3.json("http://162.243.5.105:5000/cves/:" + vendor + ":", function (data) {
-                    console.log(data);
                     if (data.length > 0) {
                         makeChart(data, vendor);
                     } else {
