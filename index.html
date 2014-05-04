@@ -145,7 +145,8 @@
                 <div id="tooltip" class="col-md-9">
                     <div class="row">
                         <div class="col-md-10">
-                            <p id="helpMessage">Hover over a dot for detailed information.</p>
+                            <p id="helpMessage">Hover over a dot for detailed information. Click on Y-Axis label for
+                                Product versions.</p>
 
                             <div class="info hidden">
                                 <p>
@@ -307,30 +308,30 @@
                 return uniqueProducts;
             }
 
-            /*
-             *  Takes in a single CVE object and a product name
-             *  Returns a String Array containing the version numbers of the given product affected by the given CVE
-             */
-            function getVulnerableVersions(cve, product) {
-                var versions = new Array();
-                var uniqueVersion = new Array();
-                var configs = getVulnerableConfigurations(cve);
-                for (var n = 0; n < configs.length; n++) {
-                    if (configs[n].product == product) {
-                        versions.push(configs[n].version);
-                    }
+        /*
+         *  Takes in a single CVE object and a product name
+         *  Returns a String Array containing the version numbers of the given product affected by the given CVE
+         */
+        function getVulnerableVersions(cve, vendor, product) {
+            var versions = new Array();
+            var uniqueVersion = new Array();
+            var configs = getVulnerableConfigurations(cve);
+            for (var n = 0; n < configs.length; n++) {
+                if (configs[n].vendor == vendor && configs[n].product == product) {
+                    versions.push(configs[n].version);
                 }
-                $.each(versions, function (i, el) {
-                    if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
-                });
-                return uniqueVersion;
             }
+            $.each(versions, function (i, el) {
+                if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
+            });
+            return uniqueVersion;
+        }
 
 
-            /*
-             *  Takes in the entire dataset (all CVEs) and a vendor name
-             *  Returns a String Array containing the names of all of the products for the given vendor in alphabetical order
-             */
+        /*
+         *  Takes in the entire dataset (all CVEs) and a vendor name
+         *  Returns a String Array containing the names of all of the products for the given vendor in alphabetical order
+         */
             function getVendorProducts(data, vendor) {
                 var products = new Array();
                 var uniqueProducts = new Array();
@@ -350,7 +351,29 @@
             }
 
             /*
-             *  Takes in a collection of CVEs and a vendor name
+             *  Takes in the entire dataset (all CVEs), vendor name and product
+             *  Returns a String Array containing the names of all of the versions for the given product for the given vendor in alphabetical order
+             */
+        function getVendorProductVersions(data, vendor, product) {
+            var versions = new Array();
+            var uniqueVersions = new Array();
+            for (var i = 0; i < data.length; i++) {
+                var tmp = getVulnerableVersions(data[i], vendor, product);
+                $.each(tmp, function (i, el) {
+                    versions.push(el);
+                });
+            }
+            $.each(versions, function (i, el) {
+                if ($.inArray(el, uniqueVersions) === -1) uniqueVersions.push(el);
+            });
+            uniqueVersions.sort(function (a, b) {
+                return d3.descending(a, b);
+            });
+            return uniqueVersions;
+        }
+
+        /*
+         *  Takes in a collection of CVEs and a vendor name
              *  Returns Max CVEs on one month for the given vendor
              */
             function getMaxCVEsSameMonth(data, vendor) {
@@ -440,15 +463,15 @@
                 .nice()
                 .domain(totalTime);
 
-            yScale.rangePoints([height, 3])
-                .domain(products);
+            yScale.rangePoints([height - 3, 1])
+                    .domain(products);
             
             xScale2.range([3, width])
                 .nice()
                 .domain(totalTime);
 
-            yScale2.range([height2, 3])
-                .domain([0, getMaxCVEsSameMonth(data, vendor)]);
+            yScale2.range([height2, 0])
+                    .domain([0, getMaxCVEsSameMonth(data, vendor)]);
 
             var svg3 = d3.select("#chart").append("svg")
                     .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
@@ -458,8 +481,8 @@
             var svg = d3.select("#chart").append("svg")
                     .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"}).style("pointer-events", "all");
 
-            svg.append("defs").append("clipPath")
-                        .attr("id", "clip")
+            var clipPath = svg.append("defs").append("clipPath")
+                    .attr("id", "clip")
                         .append("rect")
                         .attr("width", width + 20)
                         .attr("height", height + 20)
@@ -603,6 +626,236 @@
                             "transform": "translate(" + 0 + "," + 0 + ")"})
                         .call(yAxis).selectAll(".tick text")
                         .call(wrap, 140);
+
+            function expandCollapse(d) {
+                var product = d;
+                if ($.inArray(product, products) !== -1) {
+                    var versions = getVendorProductVersions(data, vendor, product);
+                    height = ((versions.length * 40) - margin.top - margin.bottom) > 500 ? (versions.length * 40) - margin.top - margin.bottom : 500;
+                    xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
+                    svg.attr("height", height + margin.top + margin.bottom);
+                    clipPath.attr("width", width + 20)
+                            .attr("height", height + 20)
+                            .attr("x", -10)
+                            .attr("y", -10);
+
+                    yScale.rangePoints([height - 3, 1]).domain(versions);
+
+                    // Update the y-axis.
+                    canvas.selectAll(".axisy").transition()
+                            .duration(3500)
+                            .call(yAxis);
+
+                    canvas.select(".axisy")
+                            .selectAll(".tick")
+                            .on("click", function (d) {
+                                expandCollapse(d);
+                            });
+
+                    // Mark any currently-displayed dots as exiting.
+                    var exit = canvas.selectAll("circle")
+                            .attr("class", "exit");
+
+                    // Update the dots.
+                    dots = timeGroups
+                            .selectAll("circle.enter")
+                            .data(function (d) {
+                                return getVulnerableVersions(d, vendor, product);
+                            })
+                            .enter()
+                            .append("circle");
+
+                    // Add new attributes.
+
+                    dots.attr({
+                        "cx": function (d) {
+                            return d3.select(this.parentNode).attr("cx");
+                        },
+                        "cy": function (d) {
+                            return yScale(d);
+                        },
+                        "product": function (d) {
+                            return d;
+                        },
+                        "fill": function (d, i) {
+                            return cScale(d3.select(this.parentNode).node().__data__.cvss);
+                        },
+                        "cveid": function (d, i) {
+                            return d3.select(this.parentNode).node().__data__.id;
+                        },
+                        "clip-path": "url(#clip)",
+                        "r": 8,
+                        "opacity": 1e-6
+                    })
+
+                    // Transition exiting dots to fade out.
+                    var exitTransition = exit.transition()
+                            .duration(3500)
+                            .style("opacity", 1e-6)
+                            .remove();
+
+                    dots.transition()
+                            .duration(3500).style("opacity", 0.7);
+
+                    dots.on("mouseover", function (d) {
+                        d3.selectAll(".info").classed("hidden", false);
+                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+                        var points = new Array();
+                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+                            points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+                        });
+                        points.forEach(function (d) {
+                            canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+                        });
+                        d3.select("#tooltip")
+                                .select("#cveid")
+                                .text(d3.select(this.parentNode).node().__data__.id);
+
+                        d3.select("#tooltip")
+                                .select("#cvss")
+                                .text(d3.select(this.parentNode).node().__data__.cvss);
+
+                        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+                        var time = d3.select(this.parentNode).node().__data__.Published;
+                        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+
+                        d3.select("#tooltip")
+                                .select("#date")
+                                .text(format.parse(time2));
+
+                        d3.select("#tooltip")
+                                .select("#desc")
+                                .text(d3.select(this.parentNode).node().__data__.summary);
+
+                        //Show the tooltip
+                        d3.select("#helpMessage").classed("hidden", true);
+                    });
+
+                    dots.on("mouseout", function () {
+                        dots.attr("stroke", "none");
+                        dots.attr("opacity", 0.7);
+                        canvas.selectAll(".guides").remove();
+                        d3.selectAll(".info").classed("hidden", true);
+                        d3.select("#helpMessage").classed("hidden", false);
+                    });
+                } else {
+                    var products2 = getVendorProducts(data, vendor);
+                    height = ((products2.length * 40) - margin.top - margin.bottom) > 500 ? (products2.length * 40) - margin.top - margin.bottom : 500;
+                    xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
+                    svg.attr("height", height + margin.top + margin.bottom);
+                    clipPath.attr("width", width + 20)
+                            .attr("height", height + 20)
+                            .attr("x", -10)
+                            .attr("y", -10);
+
+                    yScale.rangePoints([height - 3, 1]).domain(products2);
+                    // Update the y-axis.
+                    canvas.selectAll(".axisy").transition()
+                            .duration(3500)
+                            .call(yAxis);
+
+                    canvas.select(".axisy")
+                            .selectAll(".tick")
+                            .on("click", function (d) {
+                                expandCollapse(d);
+                            });
+
+                    // Mark any currently-displayed dots as exiting.
+                    var exit = canvas.selectAll("circle")
+                            .attr("class", "exit");
+
+                    // Update the dots.
+                    dots = timeGroups
+                            .selectAll("circle.enter")
+                            .data(function (d) {
+                                return getVulnerableProducts(d, vendor);
+                            })
+                            .enter()
+                            .append("circle");
+
+                    // Add new attributes.
+
+                    dots.attr({
+                        "cx": function (d) {
+                            return d3.select(this.parentNode).attr("cx");
+                        },
+                        "cy": function (d) {
+                            return yScale(d);
+                        },
+                        "vendor": function (d) {
+                            return d;
+                        },
+                        "fill": function (d, i) {
+                            return cScale(d3.select(this.parentNode).node().__data__.cvss);
+                        },
+                        "cveid": function (d, i) {
+                            return d3.select(this.parentNode).node().__data__.id;
+                        },
+                        "clip-path": "url(#clip)",
+                        "r": 8,
+                        "opacity": 1e-6
+                    })
+
+                    // Transition exiting dots to fade out.
+                    var exitTransition = exit.transition()
+                            .duration(3500)
+                            .style("opacity", 1e-6)
+                            .remove();
+
+                    dots.transition()
+                            .duration(3500).style("opacity", 0.7);
+
+                    dots.on("mouseover", function (d) {
+                        d3.selectAll(".info").classed("hidden", false);
+                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+                        var points = new Array();
+                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+                            points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+                        });
+                        points.forEach(function (d) {
+                            canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+                        });
+                        d3.select("#tooltip")
+                                .select("#cveid")
+                                .text(d3.select(this.parentNode).node().__data__.id);
+
+                        d3.select("#tooltip")
+                                .select("#cvss")
+                                .text(d3.select(this.parentNode).node().__data__.cvss);
+
+                        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+                        var time = d3.select(this.parentNode).node().__data__.Published;
+                        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+
+                        d3.select("#tooltip")
+                                .select("#date")
+                                .text(format.parse(time2));
+
+                        d3.select("#tooltip")
+                                .select("#desc")
+                                .text(d3.select(this.parentNode).node().__data__.summary);
+
+                        //Show the tooltip
+                        d3.select("#helpMessage").classed("hidden", true);
+                    });
+
+                    dots.on("mouseout", function () {
+                        dots.attr("stroke", "none");
+                        dots.attr("opacity", 0.7);
+                        canvas.selectAll(".guides").remove();
+                        d3.selectAll(".info").classed("hidden", true);
+                        d3.select("#helpMessage").classed("hidden", false);
+                    });
+
+                }
+            }
+
+
+            canvas.select(".axisy")
+                    .selectAll(".tick")
+                    .on("click", function (d) {
+                        expandCollapse(d);
+                    });
 
             canvas2.append("g")
                     .attr(
