@@ -387,7 +387,7 @@
             }
 
             // Local state available to the generator through the closure
-        var margin = {top: 110, bottom: 20, left: 150, right: 20},
+        var margin = {top: 110, bottom: 25, left: 150, right: 20},
                 margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
                     width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
             var xScale = d3.time.scale();
@@ -410,7 +410,7 @@
         function makeChart(data, vendor) {
             var products = getVendorProducts(data, vendor);
             height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
-            var xAxisBottom = window.innerHeight - 150;
+            var xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
             var totalTime = d3.extent(data, function (d, i) {
                 return getTime(d);
                 });
@@ -424,7 +424,7 @@
             yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, vendor)]);
 
             var svg3 = d3.select("#chart").append("svg")
-                    .attr({width: width + margin.left + margin.right, height: 1000, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
+                    .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
             var svg2 = d3.select("#chart").append("svg")
                     .attr({width: width + margin.left + margin.right, height: margin.top, id: "chart2"}).style("position", "fixed").style("pointer-events", "none");
             // Create the canvas area
@@ -440,15 +440,13 @@
                         .attr("y", -10);
             //Main Graph
             var canvas = svg.append("g").attr("class", "focus")
-                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+                    .attr("transform", "translate(" + margin.left + "," + (margin.top + 10) + ")");
 
-                //Small Top Graph
-                var canvas2 = svg2.append("g").attr("class", "context")
-                        .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+            //Small Top Graph
+            var canvas2 = svg2.append("g").attr("class", "context")
+                    .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
 
-                //Bottom X Axis
-
-
+            //Bottom X Axis
             var canvas3 = svg3.append("g").attr("class", "bottom")
                     .attr("transform", "translate(" + margin2.left + "," + 0 + ")");
 
@@ -573,7 +571,7 @@
                 canvas3.append("g")
                         .attr(
                         {"class": "axisx",
-                            "transform": "translate(" + 0 + "," + (xAxisBottom - 35) + ")"})
+                            "transform": "translate(" + 0 + "," + (xAxisBottom - 20) + ")"})
                         .call(xAxis);
 
 
