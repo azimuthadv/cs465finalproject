@@ -1,855 +1,662 @@
 <!DOCTYPE html>
 <html>
-    <!--
-        NOTES
-        ======
-        * IMPORTANT: when doing a product search query since the search is done using regex, search for ":apple:" instead of vendor if you want all apple products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have vendor in the product name or as part of the vendor name but aren't actually made by apple
+<!--
+    NOTES
+    ======
+    * IMPORTANT: when doing a product search query since the search is done using regex, search for ":apple:" instead of vendor if you want all apple products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have vendor in the product name or as part of the vendor name but aren't actually made by apple
 
-        TODO LIST
-        ==========
-        [x] MED: word wrap and capitalize axis labels
-        [ ] MED: figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
-        [ ] MED: figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
-        [x] HIGH: move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
-        [x] HIGH: add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
-        [x] MED: scales or clip path is too close to top edge - fix it so dots aren't cut off
-        [ ] HIGH: add guides to x and y axis (only on CVE hover or always?)
-        [x] LOW: (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
-        [ ] HIGH: change line graph/area to histogram
-    -->
+    TODO LIST
+    ==========
+    [x] MED: word wrap and capitalize axis labels
+    [ ] MED: figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
+    [ ] MED: figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
+    [x] HIGH: move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
+    [x] HIGH: add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
+    [x] MED: scales or clip path is too close to top edge - fix it so dots aren't cut off
+    [ ] HIGH: add guides to x and y axis (only on CVE hover or always?)
+    [x] LOW: (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
+    [ ] HIGH: change line graph/area to histogram
+-->
 
-    <head>
-        <meta charset=utf-8 />
-        
-        <title>CS465 Final Project</title>
-    
-        <!-- D3, jQuery, and Color Brewer includes -->
-        <script src="http://d3js.org/d3.v3.min.js" charset="utf-8" type="text/javascript"></script>
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-        <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
-        <script src="http://fgnass.github.io/spin.js/spin.min.js"></script>
-        <link href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
-        <style>
+<head>
+    <meta charset=utf-8/>
 
-            .h1 {
-                font-size: 500%;
-            }
+    <title>CS465 Final Project</title>
 
-            .axisy text {
+    <!-- D3, jQuery, and Color Brewer includes -->
+    <script src="http://d3js.org/d3.v3.min.js" charset="utf-8" type="text/javascript"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+    <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
+    <script src="http://fgnass.github.io/spin.js/spin.min.js"></script>
+    <link href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+
+        .h1 {
+            font-size: 500%;
+        }
+
+        .axisy text {
             font-family: sans-serif;
             font-size: 10pt;
-            }
+        }
 
-            .axisy path,
-            .axisy line {
+        .axisy path,
+        .axisy line {
             fill: none;
             stroke: gray;
             shape-rendering: crispEdges;
-            }
+        }
 
-            .axisx text {
+        .axisx text {
             font-family: sans-serif;
             font-size: 11pt;
-            }
+        }
 
-            .axisx path,
-            .axisx line {
+        .axisx path,
+        .axisx line {
             fill: none;
             stroke: gray;
             shape-rendering: crispEdges;
-            }
+        }
 
-            .axisx2 text {
+        .axisx2 text {
             font-family: sans-serif;
             font-size: 11pt;
-            }
+        }
 
-            .axisx2 path,
-            .axisx2 line {
+        .axisx2 path,
+        .axisx2 line {
             fill: none;
             stroke: gray;
             shape-rendering: crispEdges;
-            }
+        }
 
-            .brush .extent {
+        .brush .extent {
             stroke: #fff;
             fill-opacity: .125;
             shape-rendering: crispEdges;
-            }
-            select#vendorSelector {
-            }
+        }
 
-            .container {
-                padding: 0px;
-                margin: 0px;
-                width: 99%;
-            }
+        select#vendorSelector {
+        }
 
-            #chartContainer {
-                padding-top: 150px;
-            }
+        .container {
+            padding: 0px;
+            margin: 0px;
+            width: 99%;
+        }
 
-            #chart1 {
-                z-index: -1;
-            }
+        #chartContainer {
+            padding-top: 150px;
+        }
 
-            #chart2 {
-                z-index: 9;
-                background-color: white;
-            }
+        #chart1 {
+            z-index: -1;
+        }
 
-            #chart3 {
-                z-index: 8;
-            }
+        #chart2 {
+            z-index: 9;
+            background-color: white;
+        }
 
-            #infoContainer {
-                position: fixed;
-                background-color: white;
-                text-align: center;
-                display: inline-block;
-                vertical-align: middle;
-                float: none;
-                height: 150px;
-                z-index: 10;
-            }
+        #chart3 {
+            z-index: 8;
+        }
 
-            #helpMessage.hidden {
-                display: none;
-            }
+        #infoContainer {
+            position: fixed;
+            background-color: white;
+            text-align: center;
+            display: inline-block;
+            vertical-align: middle;
+            float: none;
+            height: 150px;
+            z-index: 10;
+        }
 
-            .info.hidden {
-                display: none;
-            }
+        #helpMessage.hidden {
+            display: none;
+        }
 
-            #tooltip p {
-                margin: 0;
-                font-family: sans-serif;
-                font-size: 16px;
-                line-height: 20px;
-                color: black;
-            }
+        .info.hidden {
+            display: none;
+        }
 
-        </style>
-    </head>
-    <body>
-        <!-- HTML Code -->
-        <div id="infoContainer" class="container">
+        #tooltip p {
+            margin: 0;
+            font-family: sans-serif;
+            font-size: 16px;
+            line-height: 20px;
+            color: black;
+        }
+
+    </style>
+</head>
+<body>
+<!-- HTML Code -->
+<div id="infoContainer" class="container">
+    <div class="row">
+        <div id="tooltip" class="col-md-12">
             <div class="row">
-                <div id="selector" class="col-md-3">
-                    <select id="vendorSelector">
-                        <optgroup label="Vendors" id="vendors">
-                            <option selected disabled hidden value=""><em>Select a Vendor</em></option>
-                        </optgroup>
-                    </select>
+                <div class="col-md-10">
+                    <div id="helpMessage">
+                        <div id="selector" class="col-md-3">
+                            <select id="vendorSelector">
+                                <optgroup label="Vendors" id="vendors">
+                                    <option selected disabled hidden value=""><em>Select a Vendor</em></option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <p>Hover over a dot for detailed information. Click on Y-Axis label for
+                            Product versions.</p></div>
+
+                    <div class="info hidden">
+                        <p>
+
+                        <h1><span id="cveid"></span></h1></p>
+                        <p><em>(Published: <span id="date"></span>)</em></p>
+
+                        <p><strong>Description:</strong> <span id="desc"></span></p>
+                    </div>
                 </div>
-                <div id="tooltip" class="col-md-9">
-                    <div class="row">
-                        <div class="col-md-10">
-                            <p id="helpMessage">Hover over a dot for detailed information. Click on Y-Axis label for
-                                Product versions.</p>
-
-                            <div class="info hidden">
-                                <p>
-
-                                <h1><span id="cveid"></span></h1></p>
-                                <p><em>(Published: <span id="date"></span>)</em></p>
-
-                                <p><strong>Description:</strong> <span id="desc"></span></p>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <div class="info hidden">
-                                <h1 class="h1"><span id="cvss"></span></h1>
-                            </div>
-                        </div>
+                <div class="col-md-2">
+                    <div class="info hidden">
+                        <h1 class="h1"><span id="cvss"></span></h1>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="chartContainer" class="container">
-            <div class="row">
-                <div id="chart" class="col-md-12">
+    </div>
+</div>
+<div id="chartContainer" class="container">
+    <div class="row">
+        <div id="chart" class="col-md-12">
 
-                </div>
-            </div>
         </div>
-        <!-- D3 Code -->
-        <script type="text/javascript">
+    </div>
+</div>
+<!-- D3 Code -->
+<script type="text/javascript">
 
-        $('vendorSelector').prop('selectedIndex', -1);
-        // global var for vendors
-        var VENDORS;
-            $.ajax({
-                url: 'http://162.243.5.105:5000/vendors',
-                dataType: 'json',
-                async: false,
-                success: function(data) {
-                    VENDORS = data;
-                }
-            });
+$('vendorSelector').prop('selectedIndex', -1);
+// global var for vendors
+var VENDORS;
+$.ajax({
+    url: 'http://162.243.5.105:5000/vendors',
+    dataType: 'json',
+    async: false,
+    success: function (data) {
+        VENDORS = data;
+    }
+});
 
-            /**
-                This function allows us to dynamically set the currently displayed vendor.
-                After grabbing the new vendor string for use with the API URL, it calls a
-                function that redraws the graph.
-            */
-            function setVendor(vendor){
-                d3.select("#chart").selectAll("svg").remove();
-                var opts = {
-                    lines: 13, // The number of lines to draw
-                    length: 20, // The length of each line
-                    width: 10, // The line thickness
-                    radius: 30, // The radius of the inner circle
-                    corners: 1, // Corner roundness (0..1)
-                    rotate: 0, // The rotation offset
-                    direction: 1, // 1: clockwise, -1: counterclockwise
-                    color: '#000', // #rgb or #rrggbb or array of colors
-                    speed: 1, // Rounds per second
-                    trail: 60, // Afterglow percentage
-                    shadow: false, // Whether to render a shadow
-                    hwaccel: false, // Whether to use hardware acceleration
-                    className: 'spinner', // The CSS class to assign to the spinner
-                    zIndex: 2e9, // The z-index (defaults to 2000000000)
-                    top: '50%', // Top position relative to parent
-                    left: '50%' // Left position relative to parent
-                };
-                var target = document.getElementById('chart');
-                var spinner = new Spinner(opts).spin(target);
-                d3.json("http://162.243.5.105:5000/cves/:" + vendor + ":", function (data) {
-                    if (data.length > 0) {
-                        makeChart(data, vendor);
-                    } else {
-                        alert("No Vulnerabilities Found for " + vendor.capitalize() + ".");
-                    }
-                    spinner.stop();
-                });
-            }
-            // build the popup menu
-            var menu = d3.select("#vendors");
-            VENDORS.forEach(function(x) {
-                menu.append("option").attr("value",x[0]).text(x[1]);
-            });
-
-            // set the behavior on a change to the menu (i.e., update the coloring)
-            d3.select("select").on("change", function() {
-                setVendor(this.value);
-            });
-
-            // used for tooltip drawing
-            var cursorX;
-            var cursorY;
-            /*
-             *  Takes in a single CVE object
-             *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
-             */
-            function getVulnerableConfigurations(cve) {
-                var cpes = new Array();
-                for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
-                    var tmp = cve.vulnerable_configuration[i].split(":");
-                    var tmp2 = {};
-                    tmp.forEach(function (x, i) {
-                        if (i == 1) {
-                            return tmp2.part = x.replace("/", "");
-                        }
-                        if (i == 2) {
-                            return tmp2.vendor = x;
-                        }
-                        if (i == 3) {
-                            return tmp2.product = x;
-                        }
-                        if (i == 4) {
-                            return tmp2.version = x;
-                        }
-                    });
-                    cpes.push(tmp2);
-
-                }
-                ;
-                return cpes;
-            }
-            ;
-
-            /*
-             *  Takes in a single CVE object
-             *  Returns a String Array of all vulnerable vendors with one or more products affected by the given CVE
-             */
-            function getVulnerableVendors(cve) {
-                var vendors = new Array();
-                var uniqueVendors = new Array();
-                var configs = getVulnerableConfigurations(cve);
-                for (var n = 0; n < configs.length; n++) {
-                    vendors.push(configs[n].vendor);
-                }
-                $.each(vendors, function (i, el) {
-                    if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
-                });
-                return uniqueVendors;
-            }
-
-
-            /*
-             *  Takes in a single CVE object and (optionally) a vendor name
-             *  Returns a String Array containing all product names for the given vendor affected by the given CVE if a vendor was provided (and all vulnerable products' names affected by the given CVE for all vendors otherwise)
-             */
-            function getVulnerableProducts(cve, vendor) {
-                var products = new Array();
-                var uniqueProducts = new Array();
-                var configs = getVulnerableConfigurations(cve);
-                for (var n = 0; n < configs.length; n++) {
-                    if (vendor != null && configs[n].vendor == vendor) {
-                        products.push(configs[n].product);
-                    } else if (vendor == null) {
-                        products.push(configs[n].product);
-                    }
-                }
-                $.each(products, function (i, el) {
-                    if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
-                });
-                return uniqueProducts;
-            }
-
-        /*
-         *  Takes in a single CVE object and a product name
-         *  Returns a String Array containing the version numbers of the given product affected by the given CVE
-         */
-        function getVulnerableVersions(cve, vendor, product) {
-            var versions = new Array();
-            var uniqueVersion = new Array();
-            var configs = getVulnerableConfigurations(cve);
-            for (var n = 0; n < configs.length; n++) {
-                if (configs[n].vendor == vendor && configs[n].product == product) {
-                    versions.push(configs[n].version);
-                }
-            }
-            $.each(versions, function (i, el) {
-                if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
-            });
-            return uniqueVersion;
+/**
+ This function allows us to dynamically set the currently displayed vendor.
+ After grabbing the new vendor string for use with the API URL, it calls a
+ function that redraws the graph.
+ */
+function setVendor(vendor) {
+    d3.select("#chart").selectAll("svg").remove();
+    var opts = {
+        lines: 13, // The number of lines to draw
+        length: 20, // The length of each line
+        width: 10, // The line thickness
+        radius: 30, // The radius of the inner circle
+        corners: 1, // Corner roundness (0..1)
+        rotate: 0, // The rotation offset
+        direction: 1, // 1: clockwise, -1: counterclockwise
+        color: '#000', // #rgb or #rrggbb or array of colors
+        speed: 1, // Rounds per second
+        trail: 60, // Afterglow percentage
+        shadow: false, // Whether to render a shadow
+        hwaccel: false, // Whether to use hardware acceleration
+        className: 'spinner', // The CSS class to assign to the spinner
+        zIndex: 2e9, // The z-index (defaults to 2000000000)
+        top: '50%', // Top position relative to parent
+        left: '50%' // Left position relative to parent
+    };
+    var target = document.getElementById('chart');
+    var spinner = new Spinner(opts).spin(target);
+    d3.json("http://162.243.5.105:5000/cves/:" + vendor + ":", function (data) {
+        if (data.length > 0) {
+            makeChart(data, vendor);
+        } else {
+            alert("No Vulnerabilities Found for " + vendor.capitalize() + ".");
         }
+        spinner.stop();
+    });
+}
+// build the popup menu
+var menu = d3.select("#vendors");
+VENDORS.forEach(function (x) {
+    menu.append("option").attr("value", x[0]).text(x[1]);
+});
 
+// set the behavior on a change to the menu (i.e., update the coloring)
+d3.select("select").on("change", function () {
+    setVendor(this.value);
+});
 
-        /*
-         *  Takes in the entire dataset (all CVEs) and a vendor name
-         *  Returns a String Array containing the names of all of the products for the given vendor in alphabetical order
-         */
-            function getVendorProducts(data, vendor) {
-                var products = new Array();
-                var uniqueProducts = new Array();
-                for (var i = 0; i < data.length; i++) {
-                    var tmp = getVulnerableProducts(data[i], vendor);
-                    $.each(tmp, function (i, el) {
-                        products.push(el);
-                    });
-                }
-                $.each(products, function (i, el) {
-                    if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
-                });
-                uniqueProducts.sort(function (a, b) {
-                    return d3.descending(a, b);
-                });
-                return uniqueProducts;
+// used for tooltip drawing
+var cursorX;
+var cursorY;
+/*
+ *  Takes in a single CVE object
+ *  Returns an array of CPEs affected by then given CVE, each broken down into the four CPE subcomponents (part, vendor, product, and version)
+ */
+function getVulnerableConfigurations(cve) {
+    var cpes = new Array();
+    for (var i = 0; i < cve.vulnerable_configuration.length; i++) {
+        var tmp = cve.vulnerable_configuration[i].split(":");
+        var tmp2 = {};
+        tmp.forEach(function (x, i) {
+            if (i == 1) {
+                return tmp2.part = x.replace("/", "");
             }
-
-            /*
-             *  Takes in the entire dataset (all CVEs), vendor name and product
-             *  Returns a String Array containing the names of all of the versions for the given product for the given vendor in alphabetical order
-             */
-        function getVendorProductVersions(data, vendor, product) {
-            var versions = new Array();
-            var uniqueVersions = new Array();
-            for (var i = 0; i < data.length; i++) {
-                var tmp = getVulnerableVersions(data[i], vendor, product);
-                $.each(tmp, function (i, el) {
-                    versions.push(el);
-                });
+            if (i == 2) {
+                return tmp2.vendor = x;
             }
-            $.each(versions, function (i, el) {
-                if ($.inArray(el, uniqueVersions) === -1) uniqueVersions.push(el);
-            });
-            uniqueVersions.sort(function (a, b) {
-                return d3.descending(a, b);
-            });
-            return uniqueVersions;
+            if (i == 3) {
+                return tmp2.product = x;
+            }
+            if (i == 4) {
+                return tmp2.version = x;
+            }
+        });
+        cpes.push(tmp2);
+
+    }
+    ;
+    return cpes;
+}
+;
+
+/*
+ *  Takes in a single CVE object
+ *  Returns a String Array of all vulnerable vendors with one or more products affected by the given CVE
+ */
+function getVulnerableVendors(cve) {
+    var vendors = new Array();
+    var uniqueVendors = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        vendors.push(configs[n].vendor);
+    }
+    $.each(vendors, function (i, el) {
+        if ($.inArray(el, uniqueVendors) === -1) uniqueVendors.push(el);
+    });
+    return uniqueVendors;
+}
+
+
+/*
+ *  Takes in a single CVE object and (optionally) a vendor name
+ *  Returns a String Array containing all product names for the given vendor affected by the given CVE if a vendor was provided (and all vulnerable products' names affected by the given CVE for all vendors otherwise)
+ */
+function getVulnerableProducts(cve, vendor) {
+    var products = new Array();
+    var uniqueProducts = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        if (vendor != null && configs[n].vendor == vendor) {
+            products.push(configs[n].product);
+        } else if (vendor == null) {
+            products.push(configs[n].product);
         }
+    }
+    $.each(products, function (i, el) {
+        if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+    });
+    return uniqueProducts;
+}
 
-        /*
-         *  Takes in a collection of CVEs and a vendor name
-             *  Returns Max CVEs on one month for the given vendor
-             */
-            function getMaxCVEsSameMonth(data, vendor) {
-                var lastDate = new Date();
-                var count = 1;
-                var maxCount = 0;
-                for (var i = 0; i < data.length; i++) {
-                    var curDate = d3.time.month(getTime(data[i]));
-                    if (lastDate.getTime() == curDate.getTime()) {
-                        if (getVulnerableProducts(data[i], vendor).length > 0) {
-                            count++;
-                        }
-                        if (maxCount <= count) {
-                            maxCount = count;
-                        }
+/*
+ *  Takes in a single CVE object and a product name
+ *  Returns a String Array containing the version numbers of the given product affected by the given CVE
+ */
+function getVulnerableVersions(cve, vendor, product) {
+    var versions = new Array();
+    var uniqueVersion = new Array();
+    var configs = getVulnerableConfigurations(cve);
+    for (var n = 0; n < configs.length; n++) {
+        if (configs[n].vendor == vendor && configs[n].product == product) {
+            versions.push(configs[n].version);
+        }
+    }
+    $.each(versions, function (i, el) {
+        if ($.inArray(el, uniqueVersion) === -1) uniqueVersion.push(el);
+    });
+    return uniqueVersion;
+}
 
-                    } else if (lastDate.getTime() != curDate.getTime()) {
-                        lastDate = curDate;
-                        count = 1;
-                    }
-                }
-                return maxCount;
+
+/*
+ *  Takes in the entire dataset (all CVEs) and a vendor name
+ *  Returns a String Array containing the names of all of the products for the given vendor in alphabetical order
+ */
+function getVendorProducts(data, vendor) {
+    var products = new Array();
+    var uniqueProducts = new Array();
+    for (var i = 0; i < data.length; i++) {
+        var tmp = getVulnerableProducts(data[i], vendor);
+        $.each(tmp, function (i, el) {
+            products.push(el);
+        });
+    }
+    $.each(products, function (i, el) {
+        if ($.inArray(el, uniqueProducts) === -1) uniqueProducts.push(el);
+    });
+    uniqueProducts.sort(function (a, b) {
+        return d3.descending(a, b);
+    });
+    return uniqueProducts;
+}
+
+/*
+ *  Takes in the entire dataset (all CVEs), vendor name and product
+ *  Returns a String Array containing the names of all of the versions for the given product for the given vendor in alphabetical order
+ */
+function getVendorProductVersions(data, vendor, product) {
+    var versions = new Array();
+    var uniqueVersions = new Array();
+    for (var i = 0; i < data.length; i++) {
+        var tmp = getVulnerableVersions(data[i], vendor, product);
+        $.each(tmp, function (i, el) {
+            versions.push(el);
+        });
+    }
+    $.each(versions, function (i, el) {
+        if ($.inArray(el, uniqueVersions) === -1) uniqueVersions.push(el);
+    });
+    uniqueVersions.sort(function (a, b) {
+        return d3.descending(a, b);
+    });
+    return uniqueVersions;
+}
+
+/*
+ *  Takes in a collection of CVEs and a vendor name
+ *  Returns Max CVEs on one month for the given vendor
+ */
+function getMaxCVEsSameMonth(data, vendor) {
+    var lastDate = new Date();
+    var count = 1;
+    var maxCount = 0;
+    for (var i = 0; i < data.length; i++) {
+        var curDate = d3.time.month(getTime(data[i]));
+        if (lastDate.getTime() == curDate.getTime()) {
+            if (getVulnerableProducts(data[i], vendor).length > 0) {
+                count++;
+            }
+            if (maxCount <= count) {
+                maxCount = count;
             }
 
-            /*
-             *  Takes a single CVE object 
-             *  Returns a formatted version of its "Published" time
-             */
-            function getTime(cve) {
-                var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
-                var time = cve.Published;
-                var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
-                return format.parse(time2);
-            }
+        } else if (lastDate.getTime() != curDate.getTime()) {
+            lastDate = curDate;
+            count = 1;
+        }
+    }
+    return maxCount;
+}
 
-            function getUniqueElements(a) {
-                var temp = {};
-                for (var i = 0; i < a.length; i++)
-                    temp[a[i]] = true;
-                var r = [];
-                for (var k in temp)
-                    r.push(k);
-                return r;
-            }
+/*
+ *  Takes a single CVE object
+ *  Returns a formatted version of its "Published" time
+ */
+function getTime(cve) {
+    var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+    var time = cve.Published;
+    var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+    return format.parse(time2);
+}
 
-            function monthsBetween(date1, date2) {
-                // The number of milliseconds in one month
-                var ONE_MONTH = 1000 * 60 * 60 * 24 * 7 * (52/12);
-                // Convert both dates to milliseconds
-                var date1_ms = date1.getTime();
-                var date2_ms = date2.getTime();
-                // Calculate the difference in milliseconds
-                var difference_ms = Math.abs(date1_ms - date2_ms);
-                // Convert back to months and return whole months
-                return Math.floor(difference_ms / ONE_MONTH);
-            }
+function getUniqueElements(a) {
+    var temp = {};
+    for (var i = 0; i < a.length; i++)
+        temp[a[i]] = true;
+    var r = [];
+    for (var k in temp)
+        r.push(k);
+    return r;
+}
 
-            // Local state available to the generator through the closure
-        var margin = {top: 110, bottom: 25, left: 150, right: 20},
-                margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
-                    width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
-            var xScale = d3.time.scale();
-            var yScale = d3.scale.ordinal();
-            var xScale2 = d3.time.scale();
-            var yScale2 = d3.scale.linear();
-        var cScale = d3.scale.quantize().range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
-        var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
-        var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
-            var yAxis = d3.svg.axis().scale(yScale).orient("left");
+function monthsBetween(date1, date2) {
+    // The number of milliseconds in one month
+    var ONE_MONTH = 1000 * 60 * 60 * 24 * 7 * (52 / 12);
+    // Convert both dates to milliseconds
+    var date1_ms = date1.getTime();
+    var date2_ms = date2.getTime();
+    // Calculate the difference in milliseconds
+    var difference_ms = Math.abs(date1_ms - date2_ms);
+    // Convert back to months and return whole months
+    return Math.floor(difference_ms / ONE_MONTH);
+}
 
-
-            var brush = d3.svg.brush()
-                    .x(xScale2)
-                    .on("brush", brushed);
-
-            var xAxisLabel = "", yAxisLabel = "", Title = "";
-
-
-        function makeChart(data, vendor) {
-            var products = getVendorProducts(data, vendor);
-            height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
-            var xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
-            var totalTime = d3.extent(data, function (d, i) {
-                return getTime(d);
-                });
-            xScale.range([3, width])
-                .nice()
-                .domain(totalTime);
-
-            yScale.rangePoints([height - 3, 1])
-                    .domain(products);
-            
-            xScale2.range([3, width])
-                .nice()
-                .domain(totalTime);
-
-            yScale2.range([height2, 0])
-                    .domain([0, getMaxCVEsSameMonth(data, vendor)]);
-
-            var svg3 = d3.select("#chart").append("svg")
-                    .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
-            var svg2 = d3.select("#chart").append("svg")
-                    .attr({width: width + margin.left + margin.right, height: margin.top, id: "chart2"}).style("position", "fixed").style("pointer-events", "none");
-            // Create the canvas area
-            var svg = d3.select("#chart").append("svg")
-                    .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"}).style("pointer-events", "all");
-
-            var clipPath = svg.append("defs").append("clipPath")
-                    .attr("id", "clip")
-                        .append("rect")
-                        .attr("width", width + 20)
-                        .attr("height", height + 20)
-                        .attr("x", -10)
-                        .attr("y", -10);
-            //Main Graph
-            var canvas = svg.append("g").attr("class", "focus")
-                    .attr("transform", "translate(" + margin.left + "," + (margin.top + 10) + ")");
-
-            //Small Top Graph
-            var canvas2 = svg2.append("g").attr("class", "context")
-                    .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
-
-            //Bottom X Axis
-            var canvas3 = svg3.append("g").attr("class", "bottom")
-                    .attr("transform", "translate(" + margin2.left + "," + 0 + ")");
-
-                // create the timeGroups in Main Graph
-                var timeGroups = canvas.selectAll("g")
-                        .data(data)
-                        .enter()
-                        .append("g").attr("class", "time");
-
-                // set the parent Time in cx
-                timeGroups.attr({
-                    "cx": function (d) {
-                        return xScale(getTime(d));
-                    }
-                });
+// Local state available to the generator through the closure
+var margin = {top: 110, bottom: 25, left: 150, right: 20},
+        margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
+        width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
+var xScale = d3.time.scale();
+var yScale = d3.scale.ordinal();
+var xScale2 = d3.time.scale();
+var yScale2 = d3.scale.linear();
+var cScale = d3.scale.quantize().range(colorbrewer.RdYlBu[9].reverse()).domain([0, 10]);
+var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
+var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
+var yAxis = d3.svg.axis().scale(yScale).orient("left");
 
 
-                // create the dots in Main Graph
-                var dots = timeGroups
-                        .selectAll("circle")
-                        .data(function (d) {
-                            return getVulnerableProducts(d, vendor);
-                        })
-                        .enter()
-                        .append("circle");
+var brush = d3.svg.brush()
+        .x(xScale2)
+        .on("brush", brushed);
 
-                // set the dot positions and radius
-                dots.attr({
-                    "cx": function (d) {
-                        return d3.select(this.parentNode).attr("cx");
-                    },
-                    "cy": function (d) {
-                        return yScale(d);
-                    },
-                    "vendor": function (d) {
-                        return d;
-                    },
-                    "fill": function (d, i) {
-                        return cScale(d3.select(this.parentNode).node().__data__.cvss);
-                    },
-                    "cveid": function (d, i) {
-                        return d3.select(this.parentNode).node().__data__.id;
-                    },
-                    "clip-path": "url(#clip)",
-                    "r": 8,
-                    "opacity": 0.7
-                }).on("mouseover", function (d) {
-                    d3.selectAll(".info").classed("hidden", false);
-                    canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
-                    var points = new Array();
-                    canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
-                        points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
-                    });
-                    points.forEach(function (d) {
-                        canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
-                    });
-                    d3.select("#tooltip")
-                            .select("#cveid")
-                            .text(d3.select(this.parentNode).node().__data__.id);
+var xAxisLabel = "", yAxisLabel = "", Title = "";
 
-                    d3.select("#tooltip")
-                            .select("#cvss")
-                            .text(d3.select(this.parentNode).node().__data__.cvss);
 
-                    var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
-                    var time = d3.select(this.parentNode).node().__data__.Published;
-                    var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+function makeChart(data, vendor) {
+    var products = getVendorProducts(data, vendor);
+    height = ((products.length * 40) - margin.top - margin.bottom) > 500 ? (products.length * 40) - margin.top - margin.bottom : 500;
+    var xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
+    var totalTime = d3.extent(data, function (d, i) {
+        return getTime(d);
+    });
+    xScale.range([3, width])
+            .nice()
+            .domain(totalTime);
 
-                    d3.select("#tooltip")
-                            .select("#date")
-                            .text(format.parse(time2));
+    yScale.rangePoints([height - 3, 1])
+            .domain(products);
 
-                    d3.select("#tooltip")
-                            .select("#desc")
-                            .text(d3.select(this.parentNode).node().__data__.summary);
+    xScale2.range([3, width])
+            .nice()
+            .domain(totalTime);
 
-                    //Show the tooltip
-                    d3.select("#helpMessage").classed("hidden", true);
+    yScale2.range([height2, 0])
+            .domain([0, getMaxCVEsSameMonth(data, vendor)]);
+
+    var svg3 = d3.select("#chart").append("svg")
+            .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
+    var svg2 = d3.select("#chart").append("svg")
+            .attr({width: width + margin.left + margin.right, height: margin.top, id: "chart2"}).style("position", "fixed").style("pointer-events", "none");
+    // Create the canvas area
+    var svg = d3.select("#chart").append("svg")
+            .attr({width: width + margin.left + margin.right, height: height + margin.top + margin.bottom, id: "chart"}).style("pointer-events", "all");
+
+    var clipPath = svg.append("defs").append("clipPath")
+            .attr("id", "clip")
+            .append("rect")
+            .attr("width", width + 20)
+            .attr("height", height + 20)
+            .attr("x", -10)
+            .attr("y", -10);
+    //Main Graph
+    var canvas = svg.append("g").attr("class", "focus")
+            .attr("transform", "translate(" + margin.left + "," + (margin.top + 10) + ")");
+
+    //Small Top Graph
+    var canvas2 = svg2.append("g").attr("class", "context")
+            .attr("transform", "translate(" + margin2.left + "," + margin2.top + ")");
+
+    //Bottom X Axis
+    var canvas3 = svg3.append("g").attr("class", "bottom")
+            .attr("transform", "translate(" + margin2.left + "," + 0 + ")");
+
+    // create the timeGroups in Main Graph
+    var timeGroups = canvas.selectAll("g")
+            .data(data)
+            .enter()
+            .append("g").attr("class", "time");
+
+    // set the parent Time in cx
+    timeGroups.attr({
+        "cx": function (d) {
+            return xScale(getTime(d));
+        }
+    });
+
+
+    // create the dots in Main Graph
+    var dots = timeGroups
+            .selectAll("circle")
+            .data(function (d) {
+                return getVulnerableProducts(d, vendor);
+            })
+            .enter()
+            .append("circle");
+
+    // set the dot positions and radius
+    dots.attr({
+        "cx": function (d) {
+            return d3.select(this.parentNode).attr("cx");
+        },
+        "cy": function (d) {
+            return yScale(d);
+        },
+        "vendor": function (d) {
+            return d;
+        },
+        "fill": function (d, i) {
+            return cScale(d3.select(this.parentNode).node().__data__.cvss);
+        },
+        "cveid": function (d, i) {
+            return d3.select(this.parentNode).node().__data__.id;
+        },
+        "clip-path": "url(#clip)",
+        "r": 8,
+        "opacity": 0.7
+    }).on("mouseover", function (d) {
+        d3.selectAll(".info").classed("hidden", false);
+        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+        var points = new Array();
+        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+            points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+        });
+        points.forEach(function (d) {
+            canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+        });
+        d3.select("#tooltip")
+                .select("#cveid")
+                .text(d3.select(this.parentNode).node().__data__.id);
+        var cvss = d3.select(this.parentNode).node().__data__.cvss;
+        d3.select("#tooltip")
+                .select("#cvss")
+                .text(cvss).style("color", function () {
+                    return cScale(cvss);
                 });
 
+        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+        var time = d3.select(this.parentNode).node().__data__.Published;
+        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+        var date = new Date(time);
 
-                dots.on("mouseout", function () {
-                    dots.attr("stroke", "none");
-                    dots.attr("opacity", 0.7);
-                    canvas.selectAll(".guides").remove();
-                    d3.selectAll(".info").classed("hidden", true);
-                    d3.select("#helpMessage").classed("hidden", false);
-                });
+        d3.select("#tooltip")
+                .select("#date")
+                .text(date.toLocaleDateString());
 
-                // Create the small context histogram
+        d3.select("#tooltip")
+                .select("#desc")
+                .text(d3.select(this.parentNode).node().__data__.summary);
 
-                // Generate a list of month points
-                var values = new Array();
-                data.forEach(function(d) {
-                    values.push(d3.time.month(getTime(d)));
-                });
-                values = values.sort(function (a, b) {return d3.ascending(a, b)});
-
-                // Generate a histogram using months as uniformly-spaced bins.
-                console.log(totalTime);
-                var histogram = d3.layout.histogram()
-                    .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
-                    (values);
+        //Show the tooltip
+        d3.select("#helpMessage").classed("hidden", true);
+    });
 
 
-                var bar = canvas2.selectAll(".bar")
-                    .data(histogram)
-                    .enter().append("g")
-                        .attr("class", "bar")
-                        .attr("transform", function(d) { return "translate(" + xScale2(d.x) + "," + yScale2(d.y) + ")"; });
+    dots.on("mouseout", function () {
+        dots.attr("stroke", "none");
+        dots.attr("opacity", 0.7);
+        canvas.selectAll(".guides").remove();
+        d3.selectAll(".info").classed("hidden", true);
+        d3.select("#helpMessage").classed("hidden", false);
+    });
 
-                bar.append("rect")
-                    .attr("x", 0)
-                    .attr("width", (width -margin2.left -margin2.right)/monthsBetween(totalTime[0], totalTime[1]))
-                    .attr("height", function(d) {return height2 - yScale2(d.y);});
+    // Create the small context histogram
 
-                // draw the axes
-                canvas3.append("g")
-                        .attr(
-                        {"class": "axisx",
-                            "transform": "translate(" + 0 + "," + (xAxisBottom - 20) + ")"})
-                        .call(xAxis);
+    // Generate a list of month points
+    var values = new Array();
+    data.forEach(function (d) {
+        values.push(d3.time.month(getTime(d)));
+    });
+    values = values.sort(function (a, b) {
+        return d3.ascending(a, b)
+    });
+
+    // Generate a histogram using months as uniformly-spaced bins.
+    console.log(totalTime);
+    var histogram = d3.layout.histogram()
+            .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
+            (values);
 
 
-                canvas.append("g")
-                        .attr({"class": "axisy",
-                            "transform": "translate(" + 0 + "," + 0 + ")"})
-                        .call(yAxis).selectAll(".tick text")
-                        .call(wrap, 140);
+    var bar = canvas2.selectAll(".bar")
+            .data(histogram)
+            .enter().append("g")
+            .attr("class", "bar")
+            .attr("transform", function (d) {
+                return "translate(" + xScale2(d.x) + "," + yScale2(d.y) + ")";
+            });
 
-            function expandCollapse(d) {
-                var product = d;
-                if ($.inArray(product, products) !== -1) {
-                    var versions = getVendorProductVersions(data, vendor, product);
-                    height = ((versions.length * 40) - margin.top - margin.bottom) > 500 ? (versions.length * 40) - margin.top - margin.bottom : 500;
-                    xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
-                    svg.attr("height", height + margin.top + margin.bottom);
-                    clipPath.attr("width", width + 20)
-                            .attr("height", height + 20)
-                            .attr("x", -10)
-                            .attr("y", -10);
+    bar.append("rect")
+            .attr("x", 0)
+            .attr("width", (width - margin2.left - margin2.right) / monthsBetween(totalTime[0], totalTime[1]))
+            .attr("height", function (d) {
+                return height2 - yScale2(d.y);
+            });
 
-                    yScale.rangePoints([height - 3, 1]).domain(versions);
+    // draw the axes
+    canvas3.append("g")
+            .attr(
+            {"class": "axisx",
+                "transform": "translate(" + 0 + "," + (xAxisBottom - 20) + ")"})
+            .call(xAxis);
 
-                    // Update the y-axis.
-                    canvas.selectAll(".axisy").transition()
-                            .duration(3500)
-                            .call(yAxis);
 
-                    canvas.select(".axisy")
-                            .selectAll(".tick")
-                            .on("click", function (d) {
-                                expandCollapse(d);
-                            });
+    canvas.append("g")
+            .attr({"class": "axisy",
+                "transform": "translate(" + 0 + "," + 0 + ")"})
+            .call(yAxis).selectAll(".tick text")
+            .call(wrap, 140);
 
-                    // Mark any currently-displayed dots as exiting.
-                    var exit = canvas.selectAll("circle")
-                            .attr("class", "exit");
+    function expandCollapse(d) {
+        var product = d;
+        if ($.inArray(product, products) !== -1) {
+            var versions = getVendorProductVersions(data, vendor, product);
+            height = ((versions.length * 40) - margin.top - margin.bottom) > 500 ? (versions.length * 40) - margin.top - margin.bottom : 500;
+            xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
+            svg.attr("height", height + margin.top + margin.bottom);
+            clipPath.attr("width", width + 20)
+                    .attr("height", height + 20)
+                    .attr("x", -10)
+                    .attr("y", -10);
 
-                    // Update the dots.
-                    dots = timeGroups
-                            .selectAll("circle.enter")
-                            .data(function (d) {
-                                return getVulnerableVersions(d, vendor, product);
-                            })
-                            .enter()
-                            .append("circle");
+            yScale.rangePoints([height - 3, 1]).domain(versions);
 
-                    // Add new attributes.
-
-                    dots.attr({
-                        "cx": function (d) {
-                            return d3.select(this.parentNode).attr("cx");
-                        },
-                        "cy": function (d) {
-                            return yScale(d);
-                        },
-                        "product": function (d) {
-                            return d;
-                        },
-                        "fill": function (d, i) {
-                            return cScale(d3.select(this.parentNode).node().__data__.cvss);
-                        },
-                        "cveid": function (d, i) {
-                            return d3.select(this.parentNode).node().__data__.id;
-                        },
-                        "clip-path": "url(#clip)",
-                        "r": 8,
-                        "opacity": 1e-6
-                    })
-
-                    // Transition exiting dots to fade out.
-                    var exitTransition = exit.transition()
-                            .duration(3500)
-                            .style("opacity", 1e-6)
-                            .remove();
-
-                    dots.transition()
-                            .duration(3500).style("opacity", 0.7);
-
-                    dots.on("mouseover", function (d) {
-                        d3.selectAll(".info").classed("hidden", false);
-                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
-                        var points = new Array();
-                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
-                            points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
-                        });
-                        points.forEach(function (d) {
-                            canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
-                        });
-                        d3.select("#tooltip")
-                                .select("#cveid")
-                                .text(d3.select(this.parentNode).node().__data__.id);
-
-                        d3.select("#tooltip")
-                                .select("#cvss")
-                                .text(d3.select(this.parentNode).node().__data__.cvss);
-
-                        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
-                        var time = d3.select(this.parentNode).node().__data__.Published;
-                        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
-
-                        d3.select("#tooltip")
-                                .select("#date")
-                                .text(format.parse(time2));
-
-                        d3.select("#tooltip")
-                                .select("#desc")
-                                .text(d3.select(this.parentNode).node().__data__.summary);
-
-                        //Show the tooltip
-                        d3.select("#helpMessage").classed("hidden", true);
-                    });
-
-                    dots.on("mouseout", function () {
-                        dots.attr("stroke", "none");
-                        dots.attr("opacity", 0.7);
-                        canvas.selectAll(".guides").remove();
-                        d3.selectAll(".info").classed("hidden", true);
-                        d3.select("#helpMessage").classed("hidden", false);
-                    });
-                } else {
-                    var products2 = getVendorProducts(data, vendor);
-                    height = ((products2.length * 40) - margin.top - margin.bottom) > 500 ? (products2.length * 40) - margin.top - margin.bottom : 500;
-                    xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
-                    svg.attr("height", height + margin.top + margin.bottom);
-                    clipPath.attr("width", width + 20)
-                            .attr("height", height + 20)
-                            .attr("x", -10)
-                            .attr("y", -10);
-
-                    yScale.rangePoints([height - 3, 1]).domain(products2);
-                    // Update the y-axis.
-                    canvas.selectAll(".axisy").transition()
-                            .duration(3500)
-                            .call(yAxis);
-
-                    canvas.select(".axisy")
-                            .selectAll(".tick")
-                            .on("click", function (d) {
-                                expandCollapse(d);
-                            });
-
-                    // Mark any currently-displayed dots as exiting.
-                    var exit = canvas.selectAll("circle")
-                            .attr("class", "exit");
-
-                    // Update the dots.
-                    dots = timeGroups
-                            .selectAll("circle.enter")
-                            .data(function (d) {
-                                return getVulnerableProducts(d, vendor);
-                            })
-                            .enter()
-                            .append("circle");
-
-                    // Add new attributes.
-
-                    dots.attr({
-                        "cx": function (d) {
-                            return d3.select(this.parentNode).attr("cx");
-                        },
-                        "cy": function (d) {
-                            return yScale(d);
-                        },
-                        "vendor": function (d) {
-                            return d;
-                        },
-                        "fill": function (d, i) {
-                            return cScale(d3.select(this.parentNode).node().__data__.cvss);
-                        },
-                        "cveid": function (d, i) {
-                            return d3.select(this.parentNode).node().__data__.id;
-                        },
-                        "clip-path": "url(#clip)",
-                        "r": 8,
-                        "opacity": 1e-6
-                    })
-
-                    // Transition exiting dots to fade out.
-                    var exitTransition = exit.transition()
-                            .duration(3500)
-                            .style("opacity", 1e-6)
-                            .remove();
-
-                    dots.transition()
-                            .duration(3500).style("opacity", 0.7);
-
-                    dots.on("mouseover", function (d) {
-                        d3.selectAll(".info").classed("hidden", false);
-                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
-                        var points = new Array();
-                        canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
-                            points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
-                        });
-                        points.forEach(function (d) {
-                            canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
-                        });
-                        d3.select("#tooltip")
-                                .select("#cveid")
-                                .text(d3.select(this.parentNode).node().__data__.id);
-
-                        d3.select("#tooltip")
-                                .select("#cvss")
-                                .text(d3.select(this.parentNode).node().__data__.cvss);
-
-                        var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
-                        var time = d3.select(this.parentNode).node().__data__.Published;
-                        var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
-
-                        d3.select("#tooltip")
-                                .select("#date")
-                                .text(format.parse(time2));
-
-                        d3.select("#tooltip")
-                                .select("#desc")
-                                .text(d3.select(this.parentNode).node().__data__.summary);
-
-                        //Show the tooltip
-                        d3.select("#helpMessage").classed("hidden", true);
-                    });
-
-                    dots.on("mouseout", function () {
-                        dots.attr("stroke", "none");
-                        dots.attr("opacity", 0.7);
-                        canvas.selectAll(".guides").remove();
-                        d3.selectAll(".info").classed("hidden", true);
-                        d3.select("#helpMessage").classed("hidden", false);
-                    });
-
-                }
-            }
-
+            // Update the y-axis.
+            canvas.selectAll(".axisy").transition()
+                    .duration(3500)
+                    .call(yAxis).selectAll(".tick text")
+                    .call(wrap, 140);
 
             canvas.select(".axisy")
                     .selectAll(".tick")
@@ -857,69 +664,286 @@
                         expandCollapse(d);
                     });
 
-            canvas2.append("g")
-                    .attr(
-                        {"class": "axisx2",
-                            "transform": "translate(" + 0 + "," + (height2) + ")"})
-                        .call(xAxis2);
+            // Mark any currently-displayed dots as exiting.
+            var exit = canvas.selectAll("circle")
+                    .attr("class", "exit");
 
-                canvas2.append("g").attr("class", "x brush").call(brush).selectAll("rect").attr("y", -15).attr("height", height2 + 15)
-        }
+            // Update the dots.
+            dots = timeGroups
+                    .selectAll("circle.enter")
+                    .data(function (d) {
+                        return getVulnerableVersions(d, vendor, product);
+                    })
+                    .enter()
+                    .append("circle");
 
-        String.prototype.capitalize = function () {
-            return this.replace(/(?:^|\s)\S/g, function(a) { return a.toUpperCase(); });
-            };
+            // Add new attributes.
 
-            function wrap(text, width) {
-                text.each(function() {
-                    var text = d3.select(this),
-                        words = text.text().split(/\_/).reverse(),
-                        word,
-                        line = [],
-                        lineNumber = 0,
-                        lineHeight = 1.0, // ems
-                        y = text.attr("y"),
-                        dy = parseFloat(text.attr("dy")),
-                        dx = -0.75,
-                        tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dx", dx + "em").attr("y", y).attr("dy", dy + "em");
-                    while (word = words.pop()) {
-                        line.push(word.capitalize());
-                        tspan.text(line.join(" "));
-                        if (tspan.node().getComputedTextLength() > width) {
-                            line.pop();
-                            tspan.text(line.join(" "));
-                            line = [word.capitalize()];
-                            tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("y", y).attr("dx", dx + "em").attr("dy", ++lineNumber * lineHeight + dy + "em").text(word.capitalize());
-                        }
-                    }
-                    text.each(function() {
-                        if (parseInt(this.getBBox().height) > 15.515625) {
-                            d3.select(this).attr("transform", "translate(" + 0 + "," + -(parseFloat(this.getBBox().height/3.0)) + ")");
-                        };
+            dots.attr({
+                "cx": function (d) {
+                    return d3.select(this.parentNode).attr("cx");
+                },
+                "cy": function (d) {
+                    return yScale(d);
+                },
+                "product": function (d) {
+                    return d;
+                },
+                "fill": function (d, i) {
+                    return cScale(d3.select(this.parentNode).node().__data__.cvss);
+                },
+                "cveid": function (d, i) {
+                    return d3.select(this.parentNode).node().__data__.id;
+                },
+                "clip-path": "url(#clip)",
+                "r": 8,
+                "opacity": 1e-6
+            })
+
+            // Transition exiting dots to fade out.
+            var exitTransition = exit.transition()
+                    .duration(3500)
+                    .style("opacity", 1e-6)
+                    .remove();
+
+            dots.transition()
+                    .duration(3500).style("opacity", 0.7);
+
+            dots.on("mouseover", function (d) {
+                d3.selectAll(".info").classed("hidden", false);
+                canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+                var points = new Array();
+                canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+                    points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+                });
+                points.forEach(function (d) {
+                    canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+                });
+                d3.select("#tooltip")
+                        .select("#cveid")
+                        .text(d3.select(this.parentNode).node().__data__.id);
+
+                var cvss = d3.select(this.parentNode).node().__data__.cvss;
+                d3.select("#tooltip")
+                        .select("#cvss")
+                        .text(cvss).style("color", function () {
+                            return cScale(cvss);
+                        });
+
+                var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+                var time = d3.select(this.parentNode).node().__data__.Published;
+                var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+                var date = new Date(time);
+
+                d3.select("#tooltip")
+                        .select("#date")
+                        .text(date.toLocaleDateString());
+
+                d3.select("#tooltip")
+                        .select("#desc")
+                        .text(d3.select(this.parentNode).node().__data__.summary);
+
+                //Show the tooltip
+                d3.select("#helpMessage").classed("hidden", true);
+            });
+
+            dots.on("mouseout", function () {
+                dots.attr("stroke", "none");
+                dots.attr("opacity", 0.7);
+                canvas.selectAll(".guides").remove();
+                d3.selectAll(".info").classed("hidden", true);
+                d3.select("#helpMessage").classed("hidden", false);
+            });
+        } else {
+            var products2 = getVendorProducts(data, vendor);
+            height = ((products2.length * 40) - margin.top - margin.bottom) > 500 ? (products2.length * 40) - margin.top - margin.bottom : 500;
+            xAxisBottom = ((products.length * 40) - margin.top - margin.bottom) > 500 ? window.innerHeight - 150 : 505 + margin.top + margin.bottom;
+            svg.attr("height", height + margin.top + margin.bottom);
+            clipPath.attr("width", width + 20)
+                    .attr("height", height + 20)
+                    .attr("x", -10)
+                    .attr("y", -10);
+
+            yScale.rangePoints([height - 3, 1]).domain(products2);
+            // Update the y-axis.
+            canvas.selectAll(".axisy").transition()
+                    .duration(3500)
+                    .call(yAxis).selectAll(".tick text")
+                    .call(wrap, 140);
+
+            canvas.select(".axisy")
+                    .selectAll(".tick")
+                    .on("click", function (d) {
+                        expandCollapse(d);
                     });
-                });
-            };
 
-            function brushed() {
-                xScale.domain(brush.empty() ? xScale2.domain() : brush.extent());
-                d3.selectAll(".time").attr({
-                    "cx": function (d) {
-                        return xScale(getTime(d));
-                    }
-                });
-                d3.selectAll("circle").attr({
-                    "cx": function (d) {
-                        return d3.select(this.parentNode).attr("cx");
-                    }
-                });
-                d3.select(".axisx").call(xAxis);
-            }
+            // Mark any currently-displayed dots as exiting.
+            var exit = canvas.selectAll("circle")
+                    .attr("class", "exit");
 
-        document.onmousemove = function (e) {
-            cursorX = e.pageX;
-            cursorY = e.pageY;
+            // Update the dots.
+            dots = timeGroups
+                    .selectAll("circle.enter")
+                    .data(function (d) {
+                        return getVulnerableProducts(d, vendor);
+                    })
+                    .enter()
+                    .append("circle");
+
+            // Add new attributes.
+
+            dots.attr({
+                "cx": function (d) {
+                    return d3.select(this.parentNode).attr("cx");
+                },
+                "cy": function (d) {
+                    return yScale(d);
+                },
+                "vendor": function (d) {
+                    return d;
+                },
+                "fill": function (d, i) {
+                    return cScale(d3.select(this.parentNode).node().__data__.cvss);
+                },
+                "cveid": function (d, i) {
+                    return d3.select(this.parentNode).node().__data__.id;
+                },
+                "clip-path": "url(#clip)",
+                "r": 8,
+                "opacity": 1e-6
+            })
+
+            // Transition exiting dots to fade out.
+            var exitTransition = exit.transition()
+                    .duration(3500)
+                    .style("opacity", 1e-6)
+                    .remove();
+
+            dots.transition()
+                    .duration(3500).style("opacity", 0.7);
+
+            dots.on("mouseover", function (d) {
+                d3.selectAll(".info").classed("hidden", false);
+                canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").attr({"stroke-width": 2, "stroke": "black", "opacity": 1});
+                var points = new Array();
+                canvas.selectAll("[cveid=" + d3.select(this.parentNode).node().__data__.id + "]").each(function () {
+                    points.push({"x": d3.select(this).attr("cx"), "y": d3.select(this).attr("cy"), "r": d3.select(this).attr("r")});
+                });
+                points.forEach(function (d) {
+                    canvas.append("line").attr("x1", 0).attr("y1", d.y).attr("x2", d.x - d.r).attr("y2", d.y).attr("stroke-width", 2).attr("stroke", "black").attr("class", "guides");
+                });
+                d3.select("#tooltip")
+                        .select("#cveid")
+                        .text(d3.select(this.parentNode).node().__data__.id);
+
+                var cvss = d3.select(this.parentNode).node().__data__.cvss;
+                d3.select("#tooltip")
+                        .select("#cvss")
+                        .text(cvss).style("color", function () {
+                            return cScale(cvss);
+                        });
+                var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
+                var time = d3.select(this.parentNode).node().__data__.Published;
+                var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
+                var date = new Date(time);
+
+                d3.select("#tooltip")
+                        .select("#date")
+                        .text(date.toLocaleDateString());
+
+                d3.select("#tooltip")
+                        .select("#desc")
+                        .text(d3.select(this.parentNode).node().__data__.summary);
+
+                //Show the tooltip
+                d3.select("#helpMessage").classed("hidden", true);
+            });
+
+            dots.on("mouseout", function () {
+                dots.attr("stroke", "none");
+                dots.attr("opacity", 0.7);
+                canvas.selectAll(".guides").remove();
+                d3.selectAll(".info").classed("hidden", true);
+                d3.select("#helpMessage").classed("hidden", false);
+            });
+
         }
+    }
 
-        </script>
-    </body>
+
+    canvas.select(".axisy")
+            .selectAll(".tick")
+            .on("click", function (d) {
+                expandCollapse(d);
+            });
+
+    canvas2.append("g")
+            .attr(
+            {"class": "axisx2",
+                "transform": "translate(" + 0 + "," + (height2) + ")"})
+            .call(xAxis2);
+
+    canvas2.append("g").attr("class", "x brush").call(brush).selectAll("rect").attr("y", -15).attr("height", height2 + 15)
+}
+
+String.prototype.capitalize = function () {
+    return this.replace(/(?:^|\s)\S/g, function (a) {
+        return a.toUpperCase();
+    });
+};
+
+function wrap(text, width) {
+    text.each(function () {
+        var text = d3.select(this),
+                words = text.text().split(/\_/).reverse(),
+                word,
+                line = [],
+                lineNumber = 0,
+                lineHeight = 1.0, // ems
+                y = text.attr("y"),
+                dy = parseFloat(text.attr("dy")),
+                dx = -0.75,
+                tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dx", dx + "em").attr("y", y).attr("dy", dy + "em");
+        while (word = words.pop()) {
+            line.push(word.capitalize());
+            tspan.text(line.join(" "));
+            if (tspan.node().getComputedTextLength() > width) {
+                line.pop();
+                tspan.text(line.join(" "));
+                line = [word.capitalize()];
+                tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("y", y).attr("dx", dx + "em").attr("dy", ++lineNumber * lineHeight + dy + "em").text(word.capitalize());
+            }
+        }
+        text.each(function () {
+            if (parseInt(this.getBBox().height) > 15.515625) {
+                d3.select(this).attr("transform", "translate(" + 0 + "," + -(parseFloat(this.getBBox().height / 3.0)) + ")");
+            }
+            ;
+        });
+    });
+}
+;
+
+function brushed() {
+    xScale.domain(brush.empty() ? xScale2.domain() : brush.extent());
+    d3.selectAll(".time").attr({
+        "cx": function (d) {
+            return xScale(getTime(d));
+        }
+    });
+    d3.selectAll("circle").attr({
+        "cx": function (d) {
+            return d3.select(this.parentNode).attr("cx");
+        }
+    });
+    d3.select(".axisx").call(xAxis);
+}
+
+document.onmousemove = function (e) {
+    cursorX = e.pageX;
+    cursorY = e.pageY;
+}
+
+</script>
+</body>
 </html>
