@@ -138,7 +138,7 @@
                 <div id="selector" class="col-md-3">
                     <select id="vendorSelector">
                         <optgroup label="Vendors" id="vendors">
-                            <option selected disabled hidden value=""><em>Select a Vendor.</em></option>
+                            <option selected disabled hidden value=""><em>Select a Vendor</em></option>
                         </optgroup>
                     </select>
                 </div>
@@ -218,7 +218,7 @@
                     if (data.length > 0) {
                         makeChart(data, vendor);
                     } else {
-                        alert("No Vulnerabilities Found for " + vendor + ".");
+                        alert("No Vulnerabilities Found for " + vendor.capitalize() + ".");
                     }
                     spinner.stop();
                 });
@@ -351,14 +351,14 @@
 
             /*
              *  Takes in a collection of CVEs and a vendor name
-             *  Returns Max CVEs on one Day for the given vendor
+             *  Returns Max CVEs on one month for the given vendor
              */
-            function getMaxCVEsSameDay(data, vendor) {
+            function getMaxCVEsSameMonth(data, vendor) {
                 var lastDate = new Date();
                 var count = 1;
                 var maxCount = 0;
                 for (var i = 0; i < data.length; i++) {
-                    var curDate = d3.time.week(getTime(data[i]));
+                    var curDate = d3.time.month(getTime(data[i]));
                     if (lastDate.getTime() == curDate.getTime()) {
                         if (getVulnerableProducts(data[i], vendor).length > 0) {
                             count++;
@@ -384,6 +384,28 @@
                 var time = cve.Published;
                 var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
                 return format.parse(time2);
+            }
+
+            function getUniqueElements(a) {
+                var temp = {};
+                for (var i = 0; i < a.length; i++)
+                    temp[a[i]] = true;
+                var r = [];
+                for (var k in temp)
+                    r.push(k);
+                return r;
+            }
+
+            function monthsBetween(date1, date2) {
+                // The number of milliseconds in one month
+                var ONE_MONTH = 1000 * 60 * 60 * 24 * 7 * (52/12);
+                // Convert both dates to milliseconds
+                var date1_ms = date1.getTime();
+                var date2_ms = date2.getTime();
+                // Calculate the difference in milliseconds
+                var difference_ms = Math.abs(date1_ms - date2_ms);
+                // Convert back to months and return whole months
+                return Math.floor(difference_ms / ONE_MONTH);
             }
 
             // Local state available to the generator through the closure
@@ -414,14 +436,19 @@
             var totalTime = d3.extent(data, function (d, i) {
                 return getTime(d);
                 });
-                xScale.range([3, width])
-                        .nice()
-                        .domain(totalTime);
-                xScale2.range([3, width])
-                        .nice()
-                        .domain(xScale.domain());
-                yScale.rangePoints([height - 3, 1]).domain(products);
-            yScale2.range([height2 - 3, 1]).domain([0, getMaxCVEsSameDay(data, vendor)]);
+            xScale.range([3, width])
+                .nice()
+                .domain(totalTime);
+
+            yScale.rangePoints([height, 3])
+                .domain(products);
+            
+            xScale2.range([3, width])
+                .nice()
+                .domain(totalTime);
+
+            yScale2.range([height2, 3])
+                .domain([0, getMaxCVEsSameMonth(data, vendor)]);
 
             var svg3 = d3.select("#chart").append("svg")
                     .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
@@ -536,36 +563,32 @@
                     d3.select("#helpMessage").classed("hidden", false);
                 });
 
+                // Create the small context histogram
 
-                // create the Area in Small Graph
-                var lastDate = new Date();
-                var count = 1;
-                var area2 = d3.svg.area()
-                        .x(function (d) {
-                            return xScale(getTime(d));
-                        }).y0(height2)
-                        .y1(function (d) {
-                            var curDate = d3.time.week(getTime(d));
-                            if (getVulnerableProducts(d, vendor).length < 1) {
-                                return yScale2(0);
-                            }
-                            else if (lastDate.getTime() == curDate.getTime()) {
-                                count++;
-                            } else if (lastDate.getTime() != curDate.getTime()) {
-                                lastDate = curDate;
-                                count = 1;
-                            }
-                            return yScale2(count);
-                        }).interpolate("monotone");
+                // Generate a list of month points
+                var values = new Array();
+                data.forEach(function(d) {
+                    values.push(d3.time.month(getTime(d)));
+                });
+                values = values.sort(function (a, b) {return d3.ascending(a, b)});
+
+                // Generate a histogram using months as uniformly-spaced bins.
+                console.log(totalTime);
+                var histogram = d3.layout.histogram()
+                    .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
+                    (values);
 
 
-                canvas2.append("path")
-                        .datum(data.sort(function (a, b) {
-                            return d3.descending(getTime(a), getTime(b));
-                        }))
-                        .attr("class", "line")
-                        .attr("d", area2).style({"fill": "steelblue", "stroke": "red"});
+                var bar = canvas2.selectAll(".bar")
+                    .data(histogram)
+                    .enter().append("g")
+                        .attr("class", "bar")
+                        .attr("transform", function(d) { return "translate(" + xScale2(d.x) + "," + yScale2(d.y) + ")"; });
 
+                bar.append("rect")
+                    .attr("x", 0)
+                    .attr("width", (width -margin2.left -margin2.right)/monthsBetween(totalTime[0], totalTime[1]))
+                    .attr("height", function(d) {return height2 - yScale2(d.y);});
 
                 // draw the axes
                 canvas3.append("g")
