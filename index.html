@@ -1,34 +1,17 @@
 <!DOCTYPE html>
 <html>
-<!--
-    NOTES
-    ======
-    * IMPORTANT: when doing a product search query since the search is done using regex, search for ":apple:" instead of vendor if you want all apple products.  Since the ':' are part of the CPE format, if you include ':' before and after the vendor name you're guaranteed to exclude products that might have vendor in the product name or as part of the vendor name but aren't actually made by apple
-
-    TODO LIST
-    ==========
-    [x] MED: word wrap and capitalize axis labels
-    [ ] MED: figure out why svg dimensions extend off page without hardcoded -25 (also hardcoded 5000 height)
-    [ ] MED: figure out how to get list of vendor products more efficiently than scanning CVEs (i.e. getVendorProducts)
-    [x] HIGH: move the bottom axis (that's redrawn on brushing) so it's also fixed with the "context" histogram axis
-    [x] HIGH: add global var for cpes for dropdowns etc (http://162.243.5.105:5000/cpes)
-    [x] MED: scales or clip path is too close to top edge - fix it so dots aren't cut off
-    [ ] HIGH: add guides to x and y axis (only on CVE hover or always?)
-    [x] LOW: (backend) if needed, fix cpes api so you can say cpes[id].part, for example - right now i think you'd have to say cpes[id].parent().part
-    [ ] HIGH: change line graph/area to histogram
--->
 
 <head>
     <meta charset=utf-8/>
 
     <title>CS465 Final Project</title>
 
-    <!-- D3, jQuery, and Color Brewer includes -->
+    <!-- D3, jQuery, Color Brewer, Spin.js, and Bootstrap includes -->
     <script src="http://d3js.org/d3.v3.min.js" charset="utf-8" type="text/javascript"></script>
     <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
     <script src="http://d3js.org/colorbrewer.v1.min.js"></script>
     <script src="http://fgnass.github.io/spin.js/spin.min.js"></script>
-    <link href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css" rel="stylesheet">
     <style>
 
         .h1 {
@@ -114,6 +97,10 @@
             z-index: 10;
         }
 
+        #desc {
+            font-size: 70%;
+        }
+
         #helpMessage.hidden {
             display: none;
         }
@@ -175,6 +162,7 @@
         </div>
     </div>
 </div>
+
 <!-- D3 Code -->
 <script type="text/javascript">
 
@@ -197,6 +185,7 @@ $.ajax({
  */
 function setVendor(vendor) {
     d3.select("#chart").selectAll("svg").remove();
+    // for spinner
     var opts = {
         lines: 13, // The number of lines to draw
         length: 20, // The length of each line
