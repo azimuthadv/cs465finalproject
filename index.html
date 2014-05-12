@@ -378,24 +378,43 @@ function getVendorProductVersions(data, vendor, product) {
  *  Takes in a collection of CVEs and a vendor name
  *  Returns Max CVEs on one month for the given vendor
  */
-function getMaxCVEsSameMonth(data, vendor) {
+function getMaxCVEsSameMonth(data, vendor, product) {
     var lastDate = new Date();
     var count = 1;
     var maxCount = 0;
-    for (var i = 0; i < data.length; i++) {
-        var curDate = d3.time.month(getTime(data[i]));
-        if (lastDate.getTime() == curDate.getTime()) {
-            if (getVulnerableProducts(data[i], vendor).length > 0) {
-                count++;
-            }
-            if (maxCount <= count) {
-                maxCount = count;
-            }
+    if (product == null) {
+        for (var i = 0; i < data.length; i++) {
+            var curDate = d3.time.month(getTime(data[i]));
+            if (lastDate.getTime() == curDate.getTime()) {
+                if (getVulnerableProducts(data[i], vendor).length > 0) {
+                    count++;
+                }
+                if (maxCount <= count) {
+                    maxCount = count;
+                }
 
-        } else if (lastDate.getTime() != curDate.getTime()) {
-            lastDate = curDate;
-            count = 1;
+            } else if (lastDate.getTime() != curDate.getTime()) {
+                lastDate = curDate;
+                count = 1;
+            }
         }
+    } else {
+        for (var i = 0; i < data.length; i++) {
+            var curDate = d3.time.month(getTime(data[i]));
+            if (lastDate.getTime() == curDate.getTime()) {
+                if (getVulnerableVersions(data[i], vendor, product).length > 0) {
+                    count++;
+                }
+                if (maxCount <= count) {
+                    maxCount = count;
+                }
+
+            } else if (lastDate.getTime() != curDate.getTime()) {
+                lastDate = curDate;
+                count = 1;
+            }
+        }
+
     }
     return maxCount;
 }
@@ -434,7 +453,7 @@ function monthsBetween(date1, date2) {
 }
 
 // Local state available to the generator through the closure
-var margin = {top: 110, bottom: 25, left: 150, right: 20},
+var margin = {top: 110, bottom: 30, left: 150, right: 20},
         margin2 = {top: 10, bottom: 420, left: 150, right: 20 },
         width = $(document).width() - margin.right - margin.left - 25, height = 5000 - margin.top - margin.bottom, height2 = 500 - margin2.top - margin2.bottom;
 var xScale = d3.time.scale();
@@ -445,7 +464,6 @@ var cScale = d3.scale.quantize().range(colorbrewer.RdYlBu[9].reverse()).domain([
 var xAxis = d3.svg.axis().scale(xScale).orient("bottom");
 var xAxis2 = d3.svg.axis().scale(xScale2).orient("bottom");
 var yAxis = d3.svg.axis().scale(yScale).orient("left");
-
 
 var brush = d3.svg.brush()
         .x(xScale2)
@@ -474,6 +492,7 @@ function makeChart(data, vendor) {
 
     yScale2.range([height2, 0])
             .domain([0, getMaxCVEsSameMonth(data, vendor)]);
+
 
     var svg3 = d3.select("#chart").append("svg")
             .attr({width: width + margin.left + margin.right, height: window.innerHeight - 150, id: "chart3"}).style("position", "fixed").style("pointer-events", "none");
@@ -561,9 +580,9 @@ function makeChart(data, vendor) {
         var cvss = d3.select(this.parentNode).node().__data__.cvss;
         d3.select("#tooltip")
                 .select("#cvss")
-                .text(cvss).style("color", function () {
+                .text(cvss).style("background-color",function () {
                     return cScale(cvss);
-                });
+                }).style("border-radius", "5px").style("padding", "5px");
 
         var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
         var time = d3.select(this.parentNode).node().__data__.Published;
@@ -603,7 +622,6 @@ function makeChart(data, vendor) {
     });
 
     // Generate a histogram using months as uniformly-spaced bins.
-    console.log(totalTime);
     var histogram = d3.layout.histogram()
             .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
             (values);
@@ -628,7 +646,7 @@ function makeChart(data, vendor) {
     canvas3.append("g")
             .attr(
             {"class": "axisx",
-                "transform": "translate(" + 0 + "," + (xAxisBottom - 20) + ")"})
+                "transform": "translate(" + 0 + "," + (xAxisBottom - 25) + ")"})
             .call(xAxis);
 
 
@@ -651,6 +669,35 @@ function makeChart(data, vendor) {
                     .attr("y", -10);
 
             yScale.rangePoints([height - 3, 1]).domain(versions);
+            yScale2.range([height2, 0])
+                    .domain([0, getMaxCVEsSameMonth(data, vendor, product)]);
+
+            //Update the histogram
+            //Generate a list of month points
+            values = new Array();
+            data.forEach(function (d) {
+                var prods = getVulnerableConfigurations(d);
+                var isIn = false;
+                for (var i = 0; i < prods.length; i++) {
+                    if (prods[i].product == product) {
+                        isIn = true;
+                    }
+                }
+                if (isIn) {
+                    values.push(d3.time.month(getTime(d)));
+                }
+            });
+            values = values.sort(function (a, b) {
+                return d3.ascending(a, b)
+            });
+            // Generate a histogram using months as uniformly-spaced bins.
+            histogram = d3.layout.histogram()
+                    .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
+                    (values);
+
+
+            bar = canvas2.selectAll(".bar").attr("class", "exit");
+
 
             // Update the y-axis.
             canvas.selectAll(".axisy").transition()
@@ -665,7 +712,7 @@ function makeChart(data, vendor) {
                     });
 
             // Mark any currently-displayed dots as exiting.
-            var exit = canvas.selectAll("circle")
+            canvas.selectAll("circle")
                     .attr("class", "exit");
 
             // Update the dots.
@@ -701,13 +748,29 @@ function makeChart(data, vendor) {
             })
 
             // Transition exiting dots to fade out.
-            var exitTransition = exit.transition()
+            var exitTransition = d3.selectAll(".exit").transition()
                     .duration(3500)
                     .style("opacity", 1e-6)
                     .remove();
 
             dots.transition()
                     .duration(3500).style("opacity", 0.7);
+
+            var bar2 = canvas2.selectAll(".bar")
+                    .data(histogram)
+                    .enter().append("g")
+                    .attr("class", "bar")
+                    .attr("transform", function (d) {
+                        return "translate(" + xScale2(d.x) + "," + yScale2(d.y) + ")";
+                    });
+
+            bar2.append("rect")
+                    .attr("x", 0)
+                    .attr("width", (width - margin2.left - margin2.right) / monthsBetween(totalTime[0], totalTime[1]))
+                    .attr("height",function (d) {
+                        return height2 - yScale2(d.y);
+                    }).style("opacity", 1e-6).transition()
+                    .duration(3500).style("opacity", 1);
 
             dots.on("mouseover", function (d) {
                 d3.selectAll(".info").classed("hidden", false);
@@ -726,9 +789,9 @@ function makeChart(data, vendor) {
                 var cvss = d3.select(this.parentNode).node().__data__.cvss;
                 d3.select("#tooltip")
                         .select("#cvss")
-                        .text(cvss).style("color", function () {
+                        .text(cvss).style("background-color",function () {
                             return cScale(cvss);
-                        });
+                        }).style("border-radius", "5px").style("padding", "5px");
 
                 var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
                 var time = d3.select(this.parentNode).node().__data__.Published;
@@ -765,6 +828,25 @@ function makeChart(data, vendor) {
                     .attr("y", -10);
 
             yScale.rangePoints([height - 3, 1]).domain(products2);
+            yScale2.range([height2, 0])
+                    .domain([0, getMaxCVEsSameMonth(data, vendor)]);
+
+            //Update the histogram
+            //Generate a list of month points
+            values = new Array();
+            data.forEach(function (d) {
+                values.push(d3.time.month(getTime(d)));
+            });
+            values = values.sort(function (a, b) {
+                return d3.ascending(a, b)
+            });
+            // Generate a histogram using months as uniformly-spaced bins.
+            histogram = d3.layout.histogram()
+                    .bins(xScale2.ticks(monthsBetween(totalTime[0], totalTime[1])))
+                    (values);
+
+
+            bar = canvas2.selectAll(".bar").attr("class", "exit");
             // Update the y-axis.
             canvas.selectAll(".axisy").transition()
                     .duration(3500)
@@ -814,13 +896,29 @@ function makeChart(data, vendor) {
             })
 
             // Transition exiting dots to fade out.
-            var exitTransition = exit.transition()
+            var exitTransition = d3.selectAll(".exit").transition()
                     .duration(3500)
                     .style("opacity", 1e-6)
                     .remove();
 
             dots.transition()
                     .duration(3500).style("opacity", 0.7);
+
+            var bar2 = canvas2.selectAll(".bar")
+                    .data(histogram)
+                    .enter().append("g")
+                    .attr("class", "bar")
+                    .attr("transform", function (d) {
+                        return "translate(" + xScale2(d.x) + "," + yScale2(d.y) + ")";
+                    });
+
+            bar2.append("rect")
+                    .attr("x", 0)
+                    .attr("width", (width - margin2.left - margin2.right) / monthsBetween(totalTime[0], totalTime[1]))
+                    .attr("height",function (d) {
+                        return height2 - yScale2(d.y);
+                    }).style("opacity", 1e-6).transition()
+                    .duration(3500).style("opacity", 1);
 
             dots.on("mouseover", function (d) {
                 d3.selectAll(".info").classed("hidden", false);
@@ -839,9 +937,9 @@ function makeChart(data, vendor) {
                 var cvss = d3.select(this.parentNode).node().__data__.cvss;
                 d3.select("#tooltip")
                         .select("#cvss")
-                        .text(cvss).style("color", function () {
+                        .text(cvss).style("background-color",function () {
                             return cScale(cvss);
-                        });
+                        }).style("border-radius", "5px").style("padding", "5px");
                 var format = d3.time.format("%Y-%m-%dT%H:%M:%S.%L%Z");
                 var time = d3.select(this.parentNode).node().__data__.Published;
                 var time2 = time.substring(0, time.lastIndexOf(":")) + '00';
@@ -883,8 +981,9 @@ function makeChart(data, vendor) {
                 "transform": "translate(" + 0 + "," + (height2) + ")"})
             .call(xAxis2);
 
-    canvas2.append("g").attr("class", "x brush").call(brush).selectAll("rect").attr("y", -15).attr("height", height2 + 15)
+    canvas2.append("g").attr("class", "x brush").call(brush).selectAll("rect").attr("y", -15).attr("height", height2 + 15);
 }
+
 
 String.prototype.capitalize = function () {
     return this.replace(/(?:^|\s)\S/g, function (a) {
