@@ -1,36 +1,36 @@
 CVE Visualizer
 ===============
-A final project for the Spring 2014 CS465 (Information Visualization) class at Middlebury College -- a visualizer for CVE vulnerabilities.
+A final project for the Spring 2014 CS465 (Information Visualization) class at Middlebury College -- a visualizer for CVE vulnerabilities.  
 
 
 Who worked on the project
 --------------------------
-[Daniel Trauner ('14)](www.danieltrauner.com) and [Arturo Vidal ('15)](www.arturovidal.org)
+[Daniel Trauner ('14)](www.danieltrauner.com) and [Arturo Vidal ('15)](www.arturovidal.org)  
 
 
 How to deploy the project
 -------------------------
-In order to deploy this project, you will need both the HTML/Javascript (D3) frontend file "index.html" as well as all of the backend files (based on wimremes' [cve-search](https://github.com/wimremes/cve-search) project) within the "backend_*.zip" archive.  While we used the smallest ($5/month) instance on DigitalOcean running Ubuntu 14.04 x64 and set up the backend to serve API requests publicly to a different machine hosting the frontend page, you could theoretically run the API and frontend off of the same machine (whether remote or local).
+In order to deploy this project, you will need both the HTML/Javascript (D3) frontend file "index.html" as well as all of the backend files (based on wimremes' [cve-search](https://github.com/wimremes/cve-search) project) within the "backend_*.zip" archive.  While we used the smallest ($5/month) instance on DigitalOcean running Ubuntu 14.04 x64 and set up the backend to serve API requests publicly to a different machine hosting the frontend page, you could theoretically run the API and frontend off of the same machine (whether remote or local).  
 
-First, in order to set up the backend:
-	1. Install Python 3
-	2. Install MongoDB
-	3. Install the following Python 3 libraries
-		..* pymongo
-		..* argparse
-		..* flask
-		..* flask-restful
-		..* flask-pymongo
-	4. Extract the "backend_*.zip" file to your home directory
-	5. Populate the cvedb instance with CVE and CPE data by running ```python3 ~/cve-search/db_mgmt.py -p``` and then ```python3 ~/cve-search/db_mgmt_cpe_dictionnary.py``` (this may take a while, but only has to be done once)
-	6. Set up automatic updating of the populated cvedb instance via ```cron``` (create a cron event that executes ```python3 ~/cve-search/db_updater.py -v``` from the cve-search folder on regular intervals)
-	7. Run the "rest-server.py" script in the cve-search folder to start the API server
+First, in order to set up the backend:  
+1. Install Python 3  
+2. Install MongoDB  
+3. Install the following Python 3 libraries  
+  * pymongo  
+  * argparse 
+  * flask 
+  * flask-restful 
+  * flask-pymongo 
+4. Extract the "backend_*.zip" file to your home directory  
+5. Populate the cvedb instance with CVE and CPE data by running ```python3 ~/cve-search/db_mgmt.py -p``` and then ```python3 ~/cve-search/db_mgmt_cpe_dictionnary.py``` (this may take a while, but only has to be done once)  
+6. Set up automatic updating of the populated cvedb instance via ```cron``` (create a cron event that executes ```python3 ~/cve-search/db_updater.py -v``` from the cve-search folder on regular intervals)  
+7. Run the "rest-server.py" script in the cve-search folder to start the API server  
 
-Next, in order to set up the frontend:
-	1. Replace all occurrences of "162.243.5.105" with the address of the server you installed the backend on (or 127.0.0.1 if the backend is running on the same machine that is serving the frontend index.html file)
-	2. Use your favorite webserver application to host the index.html file
+Next, in order to set up the frontend:  
+1. Replace all occurrences of "162.243.5.105" with the address of the server you installed the backend on (or 127.0.0.1 if the backend is running on the same machine that is serving the frontend index.html file)  
+2. Use your favorite webserver application to host the index.html file
 
-Once the backend is properly set up and the references to the backend are correct within the frontend index.htm file, the visualization should load.  Note that it takes a few seconds to load the (thousands) of unique vendors within the drop down selector.  Be patient :)
+Once the backend is properly set up and the references to the backend are correct within the frontend index.htm file, the visualization should load.  Note that it takes a few seconds to load the (thousands) of unique vendors within the drop down selector.  Be patient :)  
 
 
 Where the data came from
