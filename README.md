@@ -99,9 +99,9 @@ Final Assessment
 
 **What we'd like to do better**  
 * Y-axis expansion and contraction on click to leave in the context of other products' vulnerability points when bringing up one individual product's vulnerabilities by version (we tried, but it was too difficult given the time contstraints)
-* Clean up the data more on the backend to remove vendors with no products, for example
-* Add a few extra bits of information contained in the XML files cve-search reads from but doesn't store
-* Find a way to integrate the "refernece" links included with each vulnerability
-* Better overall formatting and placement of information
-* Perform some type of collision detection to prevent points from being drawn exactly on top of one another (may require entire overhaul of how we currently group and draw points by time)
-* Fix a number of inefficiencies (especially looping through the data) that we currently do for certain calculations 
+* Clean up the data on the backend (e.g. remove vendors with no products)
+* Add a few extra bits of information contained in the XML files that the cve-search project's database population script reads from but doesn't store
+* Find a way to integrate the "reference" links included with each vulnerability
+* Better overall formatting and placement of tooltip information
+* Perform some type of collision detection or implement jitter to prevent points from being drawn exactly on top of one another (may require entire overhaul of how we currently group and draw points by time)
+* Fix a number of inefficiencies (especially looping through the data) that we currently do for certain calculations
