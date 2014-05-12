@@ -43,8 +43,8 @@ We used the data as it was stored by the original cve-search project, but added 
 * ```/vendors```: returns all unique vendors
 
 
-Who is it for?  What questions does it answer?
-----------------------------------------------
+Who? Why?
+---------
 **This visualization is meant to serve two main audiences:**  
 
 * A system administrator (especially at the enterprise scale) who wishes to install a particular type of product and has a number of candidates in mind after taking into account external factors such as budget and features.
