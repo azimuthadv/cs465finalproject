@@ -1,6 +1,6 @@
 CVE Visualizer
 ===============
-A final project for the Spring 2014 CS465 (Information Visualization) class at Middlebury College -- a visualizer for CVE vulnerabilities.  
+A final project for the Spring 2014 CS465 (Information Visualization) class at Middlebury College.
 
 
 Who worked on the project
@@ -22,7 +22,7 @@ In order to deploy this project, you will need both the HTML/Javascript (D3) fro
 7. Run the "rest-server.py" script in the cve-search folder to start the API server  
 
 **Next, in order to set up the frontend:**  
-1. Replace all occurrences of "162.243.5.105" with the address of the server you installed the backend on (or 127.0.0.1 if the backend is running on the same machine that is serving the frontend index.html file)  
+1. Replace all occurrences of "162.243.5.105" in the "index.html" file with the address of the server you installed the backend on (or 127.0.0.1 if the backend is running on the same machine that is serving the "index.html" file)  
 2. Use your favorite webserver application to host the index.html file
 
 Once the backend is properly set up and the references to the backend are correct within the frontend index.htm file, the visualization should load.  Note that it takes a few seconds to load the (thousands) of unique vendors within the drop down selector.  Be patient :)  
@@ -37,17 +37,18 @@ What you did to transform the data to a usable state
 ----------------------------------------------------
 We used the data as it was stored by the original cve-search project, but added the additional functionality of a flask-based read-only JSON API for easier querying of small portions of the entire data set for use with D3.  The API itself has a number of endpoints (not all of which are currently being used):
 
-* ```/cves/<string:cpe_str>``` -- returns all CVEs affecting the given CPE string (partial CPEs such as product or vendors names may work here, but it is advisable to be as specific as possible)
-* ```/cve/<string:cve_id>``` -- returns the CVE corresponding to the given CVE ID
-* ```/cpes``` -- returns all unique CPE strings
-* ```/vendors``` -- returns all unique vendors
+* ```/cves/<string:cpe_str>```: returns all CVEs affecting the given CPE string (partial CPEs such as product or vendors names may work here, but it is advisable to be as specific as possible)
+* ```/cve/<string:cve_id>```: returns the CVE corresponding to the given CVE ID
+* ```/cpes```: returns all unique CPE strings
+* ```/vendors```: returns all unique vendors
 
 
 A description of who the visualization is for and what questions it is designed to answer
 -----------------------------------------------------------------------------------------
-This visualization is meant to serve two main audiences:
-	* A system administrator (especially at the enterprise scale) who wishes to install a particular type of product and has a number of candidates in mind after taking into account external factors such as budget and features.  By exploring how many vulnerabilities each candidate product has had historically (as well as the severity and descriptions of each of these vulnerabilities), he or she can make an informed decision about whether or not a given candidate product may be appropriate for a particular application.
-	* A curious individual or researcher wanting to gain insight into the vulnerability history of particular vendors and products (especially within a particular time interval).
+**This visualization is meant to serve two main audiences:**  
+
+* A system administrator (especially at the enterprise scale) who wishes to install a particular type of product and has a number of candidates in mind after taking into account external factors such as budget and features.  By exploring how many vulnerabilities each candidate product has had historically (as well as the severity and descriptions of each of these vulnerabilities), he or she can make an informed decision about whether or not a given candidate product may be appropriate for a particular application.
+* A curious individual or researcher wanting to gain insight into the vulnerability history of particular vendors and products (especially within a particular time interval).
 
 A description of the visualization including rational for the encodings and interactions you chose. A description of any approaches you contemplated or tried and then rejects would be appropriate as well
 ---------------------------------------------------------------------------------------------------------------------------------------------------------
