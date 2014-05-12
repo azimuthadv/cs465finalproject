@@ -95,10 +95,13 @@ Final Assessment
 * Issue with using arrow keys to navigate the dropdown (chart is not removed)
 * Many vendors have no products (currently warns you with an alert)
 * Clicking on the y-axis labels in product view does transition to the version view, but if the product has no versioning for some reason, there are no labels to click (and so the user is stuck unable to return to the product view)
+* There are some points exactly on top of one another, and given the way we implemented the drawing of points (in time groups) we couldn't implement jitter
 
 **What we'd like to do better**  
-* Y-axis expansion on click to leave context of other products when bringing up one product's versions (we tried, but it was too difficult given the time contstraints)
+* Y-axis expansion and contraction on click to leave in the context of other products' vulnerability points when bringing up one individual product's vulnerabilities by version (we tried, but it was too difficult given the time contstraints)
 * Clean up the data more on the backend to remove vendors with no products, for example
 * Add a few extra bits of information contained in the XML files cve-search reads from but doesn't store
 * Find a way to integrate the "refernece" links included with each vulnerability
 * Better overall formatting and placement of information
+* Perform some type of collision detection to prevent points from being drawn exactly on top of one another (may require entire overhaul of how we currently group and draw points by time)
+* Fix a number of inefficiencies (especially looping through the data) that we currently do for certain calculations 
