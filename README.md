@@ -16,7 +16,7 @@ First, in order to set up the backend:
 1. Install Python 3  
 2. Install MongoDB  
 3. Install the following Python 3 libraries  
-  * pymongo  
+  * pymongo 
   * argparse 
   * flask 
   * flask-restful 
