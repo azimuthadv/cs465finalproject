@@ -12,21 +12,16 @@ How to deploy the project
 -------------------------
 In order to deploy this project, you will need both the HTML/Javascript (D3) frontend file "index.html" as well as all of the backend files (based on wimremes' [cve-search](https://github.com/wimremes/cve-search) project) within the "backend_*.zip" archive.  While we used the smallest ($5/month) instance on DigitalOcean running Ubuntu 14.04 x64 and set up the backend to serve API requests publicly to a different machine hosting the frontend page, you could theoretically run the API and frontend off of the same machine (whether remote or local).  
 
-First, in order to set up the backend:  
+**First, in order to set up the backend:**  
 1. Install Python 3  
 2. Install MongoDB  
-3. Install the following Python 3 libraries  
-  * pymongo 
-  * argparse 
-  * flask 
-  * flask-restful 
-  * flask-pymongo 
+3. Install the following Python 3 libraries: ```pymongo```, ```argparse```, ```flask```, ```flask-restful```, and ```flask-pymongo```  
 4. Extract the "backend_*.zip" file to your home directory  
 5. Populate the cvedb instance with CVE and CPE data by running ```python3 ~/cve-search/db_mgmt.py -p``` and then ```python3 ~/cve-search/db_mgmt_cpe_dictionnary.py``` (this may take a while, but only has to be done once)  
 6. Set up automatic updating of the populated cvedb instance via ```cron``` (create a cron event that executes ```python3 ~/cve-search/db_updater.py -v``` from the cve-search folder on regular intervals)  
 7. Run the "rest-server.py" script in the cve-search folder to start the API server  
 
-Next, in order to set up the frontend:  
+**Next, in order to set up the frontend:**  
 1. Replace all occurrences of "162.243.5.105" with the address of the server you installed the backend on (or 127.0.0.1 if the backend is running on the same machine that is serving the frontend index.html file)  
 2. Use your favorite webserver application to host the index.html file
 
@@ -42,10 +37,10 @@ What you did to transform the data to a usable state
 ----------------------------------------------------
 We used the data as it was stored by the original cve-search project, but added the additional functionality of a flask-based read-only JSON API for easier querying of small portions of the entire data set for use with D3.  The API itself has a number of endpoints (not all of which are currently being used):
 
-	* ```/cves/<string:cpe_str>``` -- returns all CVEs affecting the given CPE string (partial CPEs such as product or vendors names may work here, but it is advisable to be as specific as possible)
-	* ```/cve/<string:cve_id>``` -- returns the CVE corresponding to the given CVE ID
-	* ```/cpes``` -- returns all unique CPE strings
-	* ```/vendors``` -- returns all unique vendors
+* ```/cves/<string:cpe_str>``` -- returns all CVEs affecting the given CPE string (partial CPEs such as product or vendors names may work here, but it is advisable to be as specific as possible)
+* ```/cve/<string:cve_id>``` -- returns the CVE corresponding to the given CVE ID
+* ```/cpes``` -- returns all unique CPE strings
+* ```/vendors``` -- returns all unique vendors
 
 
 A description of who the visualization is for and what questions it is designed to answer
